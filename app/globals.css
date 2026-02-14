@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #faf9f7;
+  --foreground: #3d3d3d;
+  --card: #ffffff;
+  --border: #e8e5e0;
+  --muted: #8a8a8a;
+  --accent: #6b8f71;
+  --accent-hover: #5a7a5f;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .animate-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl shadow-card border border-therapy-border p-6;
+  }
+  
+  .btn-primary {
+    @apply bg-therapy-accent text-white px-4 py-2 rounded-lg font-medium
+           hover:bg-therapy-accentHover transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-therapy-accent focus:ring-offset-2;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-therapy-text px-4 py-2 rounded-lg font-medium
+           border border-therapy-border hover:bg-sage-50 transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-therapy-accent focus:ring-offset-2;
+  }
+  
+  .input {
+    @apply w-full px-4 py-3 rounded-lg border border-therapy-border
+           bg-white text-therapy-text placeholder:text-therapy-muted
+           focus:outline-none focus:ring-2 focus:ring-therapy-accent focus:border-transparent
+           transition-all duration-200;
+  }
+  
+  .label {
+    @apply block text-sm font-medium text-therapy-text mb-2;
+  }
+}
+

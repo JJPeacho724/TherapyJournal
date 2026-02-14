@@ -1,0 +1,39 @@
+{
+  "name": "therapy-journal",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "seed": "npx tsx scripts/seed-test-data.ts",
+    "seed:demo": "npx tsx scripts/seed-test-data.ts",
+    "neo4j:setup": "npx tsx scripts/neo4j-setup.ts",
+    "neo4j:eval": "npx tsx scripts/neo4j-eval.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.47.10",
+    "next": "^14.2.18",
+    "neo4j-driver": "^5.28.1",
+    "openai": "^4.73.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.14.1",
+    "tailwindcss": "^3.4.15"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "dotenv": "^16.6.1",
+    "eslint": "^9.16.0",
+    "eslint-config-next": "^15.0.3",
+    "postcss": "^8.4.49",
+    "tsx": "^4.20.6",
+    "typescript": "^5.7.2"
+  }
+}
