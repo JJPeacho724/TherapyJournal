@@ -39,6 +39,9 @@ next-env.d.ts
 .vscode
 .cursor
 
+# Public dataset files (downloaded CSVs/TSVs)
+/data/
+
 # Windows reserved name artifact
 nul
 

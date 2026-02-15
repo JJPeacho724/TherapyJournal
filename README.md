@@ -122,6 +122,86 @@ This creates two accounts and 20 days of realistic journal data:
 
 Run `npm run seed:demo` again. It clears only the demo patient's data and reseeds fresh entries with timestamps relative to "now".
 
+## Training with Public Datasets
+
+You can train the mood-scoring and feature-extraction pipeline using public mental health text datasets instead of real user data. The ingestion script loads external CSV/TSV files, maps labels to simulated mood self-reports, generates synthetic structured data (sleep, energy, medication) correlated with mood, and runs every entry through the same GPT-4 extraction pipeline used in production.
+
+### Supported Datasets
+
+| Dataset | Source | Format | What it provides |
+|---------|--------|--------|-----------------|
+| **Sentiment Analysis for Mental Health** | [Kaggle](https://www.kaggle.com/datasets/suchintikasarkar/sentiment-analysis-for-mental-health) | CSV | ~16k rows of mental-health text with diagnostic labels (Depression, Anxiety, Normal, etc.) |
+| **GoEmotions** | [GitHub](https://github.com/google-research/google-research/tree/master/goemotions) | TSV | 58k Reddit comments with 27 fine-grained emotion labels |
+
+### Download & Prepare Data
+
+1. Create the `data/` directory (it is gitignored):
+   ```bash
+   mkdir data
+   ```
+
+2. **Kaggle dataset** — Download from the link above, unzip, and place the CSV in `data/`:
+   ```
+   data/mental_health.csv
+   ```
+
+3. **GoEmotions** — Download the TSV files and concatenate:
+   ```bash
+   cd data
+   curl -O https://raw.githubusercontent.com/google-research/google-research/master/goemotions/data/full_dataset/goemotions_1.csv
+   curl -O https://raw.githubusercontent.com/google-research/google-research/master/goemotions/data/full_dataset/goemotions_2.csv
+   curl -O https://raw.githubusercontent.com/google-research/google-research/master/goemotions/data/full_dataset/goemotions_3.csv
+   cat goemotions_1.csv goemotions_2.csv goemotions_3.csv > goemotions.tsv
+   cd ..
+   ```
+
+### Run Ingestion
+
+```bash
+# Preview what will happen (no API calls):
+npm run ingest:public -- --dataset kaggle --file data/mental_health.csv --dry-run
+
+# Ingest 200 entries from the Kaggle dataset:
+npm run ingest:public -- --dataset kaggle --file data/mental_health.csv --limit 200
+
+# Ingest 500 GoEmotions entries with higher parallelism:
+npm run ingest:public -- --dataset goemotions --file data/goemotions.tsv --limit 500 --concurrency 8
+
+# Skip GPT-4 extraction (only embed + ingest structure):
+npm run ingest:public -- --dataset kaggle --file data/mental_health.csv --skip-extraction
+```
+
+### CLI Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dataset` | (required) | `kaggle` or `goemotions` |
+| `--file` | (required) | Path to the downloaded CSV/TSV |
+| `--limit` | `200` | Max entries to ingest |
+| `--concurrency` | `5` | Parallel API calls |
+| `--dry-run` | `false` | Preview mappings without API calls |
+| `--skip-extraction` | `false` | Skip GPT-4 extraction, only embed + ingest |
+
+### Cost Estimate
+
+Each entry requires one GPT-4 call (~$0.02) and one embedding call (~$0.0001):
+
+| Entries | GPT-4 Cost | Embedding Cost | Total |
+|---------|-----------|---------------|-------|
+| 200 | ~$4 | ~$0.02 | ~$4 |
+| 500 | ~$10 | ~$0.05 | ~$10 |
+| 1,000 | ~$20 | ~$0.10 | ~$20 |
+
+Use `--skip-extraction` to avoid GPT-4 costs (embeddings are very cheap).
+
+### After Ingestion
+
+1. Train calibration models for each synthetic user via `POST /api/graph/train`
+2. Evaluate model quality:
+   ```bash
+   npm run neo4j:eval
+   ```
+
 ## AI Safety
 
 The AI components follow strict guidelines defined in `AI_RULES.md`:
