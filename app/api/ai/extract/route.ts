@@ -4,8 +4,10 @@ import { upsertAIExtractionToNeo4j } from '@/lib/graph/neo4jIngest'
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
-import type { AIExtractionResponse } from '@/types'
+import type { AIExtractionResponseV2, ExtractionEvidence } from '@/types'
 import { anxietyToCalmness, calculateZScore, updateEwmaStats } from '@/lib/normalization'
+import { validateEvidenceSpans } from '@/lib/evidence-validation'
+import { MIN_ENTRIES_FOR_Z } from '@/lib/constants'
 
 // POST /api/ai/extract - Extract mood/symptoms from journal entry
 export async function POST(request: NextRequest) {
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
     )
 
     // Parse the JSON response
-    let extraction: AIExtractionResponse
+    let extraction: AIExtractionResponseV2
     try {
       // Clean up potential markdown code blocks
       const cleanedResponse = response
@@ -59,6 +61,68 @@ export async function POST(request: NextRequest) {
       console.error('Failed to parse AI response:', response)
       return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 })
     }
+
+    // ── Evidence validation & auto-repair ──────────────────────
+    let evidence: ExtractionEvidence | null = extraction.evidence ?? null
+    let evidence_valid: boolean | null = null
+
+    if (evidence) {
+      const result = validateEvidenceSpans(evidence, content)
+      if (result.valid) {
+        evidence = result.repaired
+        evidence_valid = true
+      } else {
+        // Auto-repair attempt: re-prompt GPT once with targeted fix instructions
+        try {
+          const repairPrompt = [
+            'Fix the following JSON evidence alignment issues. The `quote` fields must be exact substrings of the original text, and start_char/end_char must be correct 0-indexed offsets.',
+            '',
+            'Errors:',
+            ...result.errors,
+            '',
+            'Original text (for reference):',
+            content,
+            '',
+            'Current evidence JSON:',
+            JSON.stringify(evidence, null, 2),
+            '',
+            'Return ONLY the corrected evidence JSON object (no other fields).',
+          ].join('\n')
+
+          const repairResponse = await createChatCompletion(
+            [
+              { role: 'system', content: repairPrompt },
+              { role: 'user', content: 'Fix the evidence alignment.' },
+            ],
+            { temperature: 0.1, maxTokens: 1500 },
+          )
+
+          const cleanedRepair = repairResponse
+            .replace(/```json\n?/g, '')
+            .replace(/```\n?/g, '')
+            .trim()
+          const repairedEvidence: ExtractionEvidence = JSON.parse(cleanedRepair)
+          const retryResult = validateEvidenceSpans(repairedEvidence, content)
+
+          if (retryResult.valid) {
+            evidence = retryResult.repaired
+            evidence_valid = true
+          } else {
+            // Still invalid after repair — drop evidence, keep scores
+            console.warn('Evidence repair failed, dropping evidence spans')
+            evidence = null
+            evidence_valid = false
+          }
+        } catch (repairError) {
+          console.warn('Evidence repair call failed:', repairError)
+          evidence = null
+          evidence_valid = false
+        }
+      }
+    }
+    // Attach validated evidence back onto extraction for the response
+    extraction.evidence = evidence
+    extraction.evidence_valid = evidence_valid ?? undefined
 
     // If entry_id provided, save to database
     if (entry_id) {
@@ -100,6 +164,8 @@ export async function POST(request: NextRequest) {
       const calmnessRaw = anxietyToCalmness(extraction.anxiety_score)
 
       // --- Fetch baselines/population stats (best-effort; keep extraction working even if stats fail) ---
+      // anxiety_z_score is actually calmness_z_score (anxiety reverse-coded to 1-10 calmness).
+      // Positive z = calmer than baseline. Kept as "anxiety_z_score" for DB backward compat.
       let mood_z_score: number | null = null
       let anxiety_z_score: number | null = null
       let mood_pop_z: number | null = null
@@ -122,7 +188,8 @@ export async function POST(request: NextRequest) {
         const moodBase = byMetric.get('mood') ?? null
         const anxBase = byMetric.get('anxiety') ?? null
 
-        if (moodBase && (moodBase.sample_count ?? 0) >= 5) {
+        // Z-scores are null until MIN_ENTRIES_FOR_Z entries ("collecting baseline")
+        if (moodBase && (moodBase.sample_count ?? 0) >= MIN_ENTRIES_FOR_Z) {
           const z = calculateZScore(moodRaw, {
             mean: Number(moodBase.baseline_mean ?? 0),
             std: Number(moodBase.baseline_std ?? 0),
@@ -131,7 +198,7 @@ export async function POST(request: NextRequest) {
           mood_z_score = Number.isFinite(z) ? z : null
         }
 
-        if (anxBase && (anxBase.sample_count ?? 0) >= 5) {
+        if (anxBase && (anxBase.sample_count ?? 0) >= MIN_ENTRIES_FOR_Z) {
           const z = calculateZScore(calmnessRaw, {
             mean: Number(anxBase.baseline_mean ?? 0),
             std: Number(anxBase.baseline_std ?? 0),
@@ -201,7 +268,7 @@ export async function POST(request: NextRequest) {
         const moodPop = popByMetric.get('mood') ?? null
         const anxPop = popByMetric.get('anxiety') ?? null
 
-        if (moodPop && (moodPop.sample_count ?? 0) >= 5) {
+        if (moodPop && (moodPop.sample_count ?? 0) >= MIN_ENTRIES_FOR_Z) {
           const z = calculateZScore(moodRaw, {
             mean: Number(moodPop.population_mean ?? 0),
             std: Number(moodPop.population_std ?? 0),
@@ -210,7 +277,7 @@ export async function POST(request: NextRequest) {
           mood_pop_z = Number.isFinite(z) ? z : null
         }
 
-        if (anxPop && (anxPop.sample_count ?? 0) >= 5) {
+        if (anxPop && (anxPop.sample_count ?? 0) >= MIN_ENTRIES_FOR_Z) {
           const z = calculateZScore(calmnessRaw, {
             mean: Number(anxPop.population_mean ?? 0),
             std: Number(anxPop.population_std ?? 0),
@@ -273,52 +340,39 @@ export async function POST(request: NextRequest) {
         .eq('entry_id', entry_id)
         .single()
 
+      // Common payload for both insert and update (includes evidence columns)
+      const extractionPayload = {
+        mood_score: extraction.mood_score,
+        anxiety_score: extraction.anxiety_score,
+        phq9_indicators: extraction.phq9_indicators,
+        gad7_indicators: extraction.gad7_indicators,
+        phq9_estimate,
+        gad7_estimate,
+        mood_z_score,
+        anxiety_z_score, // actually calmness z-score, see comment above
+        mood_pop_z,
+        anxiety_pop_z,   // actually calmness pop z-score
+        emotions: extraction.emotions,
+        symptoms: extraction.symptoms,
+        triggers: extraction.triggers,
+        confidence: extraction.confidence,
+        crisis_detected,
+        summary: extraction.summary,
+        evidence,        // ExtractionEvidence | null — jsonb column
+        evidence_valid,  // boolean | null
+      }
+
       if (existing) {
         // Update existing
         await svc
           .from('ai_extractions')
-          .update({
-            mood_score: extraction.mood_score,
-            anxiety_score: extraction.anxiety_score,
-            phq9_indicators: extraction.phq9_indicators,
-            gad7_indicators: extraction.gad7_indicators,
-            phq9_estimate,
-            gad7_estimate,
-            mood_z_score,
-            anxiety_z_score,
-            mood_pop_z,
-            anxiety_pop_z,
-            emotions: extraction.emotions,
-            symptoms: extraction.symptoms,
-            triggers: extraction.triggers,
-            confidence: extraction.confidence,
-            crisis_detected,
-            summary: extraction.summary,
-          })
+          .update(extractionPayload)
           .eq('entry_id', entry_id)
       } else {
         // Insert new
         await svc
           .from('ai_extractions')
-          .insert({
-            entry_id,
-            mood_score: extraction.mood_score,
-            anxiety_score: extraction.anxiety_score,
-            phq9_indicators: extraction.phq9_indicators,
-            gad7_indicators: extraction.gad7_indicators,
-            phq9_estimate,
-            gad7_estimate,
-            mood_z_score,
-            anxiety_z_score,
-            mood_pop_z,
-            anxiety_pop_z,
-            emotions: extraction.emotions,
-            symptoms: extraction.symptoms,
-            triggers: extraction.triggers,
-            confidence: extraction.confidence,
-            crisis_detected,
-            summary: extraction.summary,
-          })
+          .insert({ entry_id, ...extractionPayload })
       }
 
       // If crisis detected, create alert

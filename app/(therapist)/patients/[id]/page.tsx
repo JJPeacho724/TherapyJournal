@@ -203,7 +203,7 @@ export default async function PatientDetailPage({
             {phq9Latest !== null ? phq9Latest : '—'}
           </div>
           <div className="text-xs text-therapy-muted mt-1">
-            PHQ-9 est. {phq9Latest !== null ? `(${interpretPHQ9(phq9Latest)})` : ''}
+            PHQ-9-aligned est. {phq9Latest !== null ? `(${interpretPHQ9(phq9Latest)})` : ''}
           </div>
           {phq9Rci?.changed && (
             <div
@@ -220,7 +220,7 @@ export default async function PatientDetailPage({
             {gad7Latest !== null ? gad7Latest : '—'}
           </div>
           <div className="text-xs text-therapy-muted mt-1">
-            GAD-7 est. {gad7Latest !== null ? `(${interpretGAD7(gad7Latest)})` : ''}
+            GAD-7-aligned est. {gad7Latest !== null ? `(${interpretGAD7(gad7Latest)})` : ''}
           </div>
           {gad7Rci?.changed && (
             <div
@@ -243,8 +243,8 @@ export default async function PatientDetailPage({
       {/* Clinical normalization notes */}
       <div className="mb-8">
         <p className="text-xs text-therapy-muted">
-          PHQ-9/GAD-7 values shown here are AI-derived estimates from journal text for trend awareness. They are not a
-          substitute for administering standardized instruments.
+          PHQ-9-aligned / GAD-7-aligned values shown here are text-derived indicator estimates for trend awareness.
+          They are not an administered questionnaire and do not constitute a clinical score.
         </p>
         <p className="text-xs text-therapy-muted mt-1">
           Z-scores (when available) are normalized after 5+ entries. Higher z means better relative to baseline; anxiety
@@ -369,7 +369,7 @@ export default async function PatientDetailPage({
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       <div className="rounded-lg border border-therapy-border bg-white p-3">
                         <div className="flex items-center justify-between">
-                          <div className="font-medium text-therapy-text">PHQ-9 est.</div>
+                          <div className="font-medium text-therapy-text">PHQ-9-aligned est.</div>
                           <div className="text-therapy-text">
                             {typeof entry.ai_extraction?.phq9_estimate === 'number'
                               ? entry.ai_extraction.phq9_estimate
@@ -384,7 +384,7 @@ export default async function PatientDetailPage({
                       </div>
                       <div className="rounded-lg border border-therapy-border bg-white p-3">
                         <div className="flex items-center justify-between">
-                          <div className="font-medium text-therapy-text">GAD-7 est.</div>
+                          <div className="font-medium text-therapy-text">GAD-7-aligned est.</div>
                           <div className="text-therapy-text">
                             {typeof entry.ai_extraction?.gad7_estimate === 'number'
                               ? entry.ai_extraction.gad7_estimate

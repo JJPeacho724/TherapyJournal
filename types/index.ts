@@ -62,6 +62,31 @@ export interface GAD7Indicators {
   afraid: number
 }
 
+// Derived key types for evidence mapping
+export type PHQ9Item = keyof PHQ9Indicators
+export type GAD7Item = keyof GAD7Indicators
+
+/** A span of text in the original journal entry that supports a score. */
+export interface EvidenceSpan {
+  /** Exact substring of the journal entry text. */
+  quote: string
+  /** 0-indexed start character offset into the original text. */
+  start_char: number
+  /** 0-indexed end character offset (exclusive) into the original text. */
+  end_char: number
+  /** Brief rationale for why this text supports the score. */
+  rationale: string
+}
+
+/** Evidence spans keyed by the score/indicator they support. */
+export interface ExtractionEvidence {
+  mood_score: EvidenceSpan[]
+  anxiety_score: EvidenceSpan[]
+  phq9_indicators: Record<PHQ9Item, EvidenceSpan[]>
+  gad7_indicators: Record<GAD7Item, EvidenceSpan[]>
+  crisis_detected: EvidenceSpan[]
+}
+
 export interface AIExtraction {
   id: string
   entry_id: string
@@ -79,8 +104,17 @@ export interface AIExtraction {
   symptoms: string[]
   triggers: string[]
   confidence: number // 0-1
+  /**
+   * Documentation flag only. Indicates the AI detected language
+   * consistent with crisis/distress. Does NOT trigger automated
+   * clinical intervention. Must be reviewed by a licensed professional.
+   */
   crisis_detected: boolean
   summary: string
+  /** Evidence spans supporting the extraction scores. Null if not available or validation failed. */
+  evidence?: ExtractionEvidence | null
+  /** Whether the evidence spans were validated as correct substrings of the original text. */
+  evidence_valid?: boolean | null
   created_at: string
 }
 
@@ -154,9 +188,20 @@ export interface AIExtractionResponse {
   symptoms: string[]
   triggers: string[]
   confidence: number
+  /**
+   * Documentation flag only. Indicates the AI detected language
+   * consistent with crisis/distress. Does NOT trigger automated
+   * clinical intervention. Must be reviewed by a licensed professional.
+   */
   crisis_detected: boolean
   crisis_severity?: CrisisSeverity
   summary: string
+}
+
+/** V2 extraction response with optional evidence spans (backward-compatible). */
+export interface AIExtractionResponseV2 extends AIExtractionResponse {
+  evidence?: ExtractionEvidence | null
+  evidence_valid?: boolean
 }
 
 export interface GuidedPromptRequest {

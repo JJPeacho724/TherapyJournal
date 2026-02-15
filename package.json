@@ -10,13 +10,17 @@
     "seed": "npx tsx scripts/seed-test-data.ts",
     "seed:demo": "npx tsx scripts/seed-test-data.ts",
     "neo4j:setup": "npx tsx scripts/neo4j-setup.ts",
-    "neo4j:eval": "npx tsx scripts/neo4j-eval.ts"
+    "neo4j:eval": "npx tsx scripts/neo4j-eval.ts",
+    "ingest:public": "npx tsx scripts/ingest-public-data.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.57.1",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
-    "next": "^14.2.18",
     "neo4j-driver": "^5.28.1",
+    "next": "^14.2.18",
     "openai": "^4.73.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -34,6 +38,7 @@
     "eslint-config-next": "^15.0.3",
     "postcss": "^8.4.49",
     "tsx": "^4.20.6",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.18"
   }
 }

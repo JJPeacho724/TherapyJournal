@@ -3,6 +3,14 @@ import { retrieveSimilarEpisodes } from '@/lib/graph/neo4jRetrieve'
 import { fetchUserTrainingRows, loadUserCalibrationModel, storeUserCalibrationModel, type StoredCalibrationModel } from '@/lib/graph/neo4jTraining'
 import { clamp, mean, ridgeRegression, variance } from '@/lib/graph/math'
 import { getNeo4jConfig, getNeo4jDriver } from '@/lib/neo4j'
+import {
+  CALIBRATION_MIN_FEATURE_SUPPORT,
+  CALIBRATION_DEFAULT_MAX_FEATURES,
+  CALIBRATION_MIN_FEATURES_TO_USE,
+  RETRIEVAL_ALPHA_MIN,
+  RETRIEVAL_ALPHA_MAX,
+  VARIANCE_DISAGREEMENT_CAP,
+} from '@/lib/constants'
 
 const MODEL_VERSION = 'calib_ridge_bootstrap_v1'
 
@@ -93,7 +101,6 @@ export interface TrainOptions {
 
 export async function trainAndStoreUserCalibrationModel(userId: string, opts: TrainOptions = {}) {
   const lambda = opts.lambda ?? 1.0
-  const maxFeatures = opts.maxFeatures ?? 120
   const minTrainingN = opts.minTrainingN ?? 10
   const bootstrapSamples = opts.bootstrapSamples ?? 100
 
@@ -102,18 +109,30 @@ export async function trainAndStoreUserCalibrationModel(userId: string, opts: Tr
     return { trained: false, reason: `Need at least ${minTrainingN} labeled days; have ${rows.length}.` }
   }
 
-  // Build user-specific vocabulary of featureIds (top by frequency)
+  // Dynamic feature cap: min(30, floor(N/2)) prevents overfitting at small N
+  const dynamicMaxFeatures = Math.min(
+    opts.maxFeatures ?? CALIBRATION_DEFAULT_MAX_FEATURES,
+    Math.floor(rows.length / 2),
+  )
+
+  // Build frequency map and enforce min_support >= CALIBRATION_MIN_FEATURE_SUPPORT
   const freq = new Map<string, number>()
   for (const r of rows) {
     for (const fid of r.featureIds ?? []) freq.set(fid, (freq.get(fid) ?? 0) + 1)
   }
+
   const topFeatureIds = Array.from(freq.entries())
+    .filter(([, count]) => count >= CALIBRATION_MIN_FEATURE_SUPPORT) // min_support filter
     .sort((a, b) => b[1] - a[1])
-    .slice(0, maxFeatures)
+    .slice(0, dynamicMaxFeatures)
     .map(([fid]) => fid)
 
+  // If too few features survive filtering, train with base predictors only
+  const useFeatures = topFeatureIds.length >= CALIBRATION_MIN_FEATURES_TO_USE
+  const effectiveFeatureIds = useFeatures ? topFeatureIds : []
+
   const predictors = rows.map((r) => toPredictorVector(r))
-  const X = predictors.map((p) => vectorize(p, topFeatureIds))
+  const X = predictors.map((p) => vectorize(p, effectiveFeatureIds))
   const y = rows.map((r) => r.mood)
 
   const weights = ridgeRegression(X, y, lambda)
@@ -141,7 +160,7 @@ export async function trainAndStoreUserCalibrationModel(userId: string, opts: Tr
     updatedAt: new Date().toISOString(),
     lambda,
     residualSd: Number.isFinite(residualSd) ? residualSd : 0,
-    predictorKeys: buildPredictorKeys(topFeatureIds),
+    predictorKeys: buildPredictorKeys(effectiveFeatureIds),
     weights,
     weightVar,
     trainingN: rows.length,
@@ -149,9 +168,10 @@ export async function trainAndStoreUserCalibrationModel(userId: string, opts: Tr
 
   await storeUserCalibrationModel(userId, model)
 
-  // Also materialize feature association stats from the model weights (lag 0 only in v1)
-  // Stored as stats (not causal claims) on (u)-[:ASSOCIATED_WITH]->(f).
-  await upsertLag0AssociationsFromModel(userId, topFeatureIds, model)
+  // Materialize feature association stats only when feature indicators were used
+  if (useFeatures) {
+    await upsertLag0AssociationsFromModel(userId, effectiveFeatureIds, model)
+  }
 
   return { trained: true, model }
 }
@@ -212,7 +232,12 @@ export interface MoodPrediction {
   sd: number
   alpha: number
   model?: { mean: number; sd: number; trainingN: number } | null
-  retrieved?: { mean: number; sd: number; supportN: number } | null
+  retrieved?: {
+    mean: number
+    sd: number
+    supportN: number          // legacy: episode count
+    effectiveSupport: number  // new: sum of similarity weights
+  } | null
   episodes: Array<{ entryId: string; timestamp: string; similarity: number; mood?: number | null }>
 }
 
@@ -286,7 +311,12 @@ function computeRetrievedEstimate(episodes: Array<{ similarity: number; mood: nu
   // Weighted variance around mu (conservative)
   const varW =
     episodes.reduce((acc, e, i) => acc + ws[i] * (e.mood - mu) * (e.mood - mu), 0) / wSum
-  return { mean: mu, sd: Math.sqrt(Math.max(0, varW)), supportN: episodes.length }
+  return {
+    mean: mu,
+    sd: Math.sqrt(Math.max(0, varW)),
+    supportN: episodes.length,         // legacy: episode count
+    effectiveSupport: wSum,            // sum of similarity weights
+  }
 }
 
 export async function predictCalibratedMood(input: PredictInput): Promise<MoodPrediction> {
@@ -341,8 +371,13 @@ export async function predictCalibratedMood(input: PredictInput): Promise<MoodPr
   const modelPred = model ? computeModelPrediction(model, predictors) : null
 
   // 4) Blend.
-  const support = retrieved?.supportN ?? 0
-  const alpha = clamp(0.8 - 0.05 * support, 0.3, 0.8)
+  // Alpha schedule: shifts weight toward retrieval only with real support (sum of similarity weights)
+  const effectiveSupport = retrieved?.effectiveSupport ?? 0
+  const alpha = clamp(
+    0.75 - 0.15 * Math.log(1 + effectiveSupport),
+    RETRIEVAL_ALPHA_MIN,
+    RETRIEVAL_ALPHA_MAX,
+  )
 
   const muModel = modelPred?.mean ?? (retrieved?.mean ?? 5)
   const sdModel = modelPred?.sd ?? (retrieved?.sd ?? 2)
@@ -350,10 +385,14 @@ export async function predictCalibratedMood(input: PredictInput): Promise<MoodPr
   const sdRetr = retrieved?.sd ?? sdModel
 
   const mu = alpha * muModel + (1 - alpha) * muRetr
+
+  // Variance blend with capped disagreement penalty to prevent single outlier explosion
+  const disagreementRaw = (muModel - muRetr) ** 2
+  const disagreementCapped = Math.min(disagreementRaw, VARIANCE_DISAGREEMENT_CAP)
   const varianceBlend =
-    alpha * alpha * sdModel * sdModel +
-    (1 - alpha) * (1 - alpha) * sdRetr * sdRetr +
-    0.25 * (muModel - muRetr) * (muModel - muRetr)
+    alpha ** 2 * sdModel ** 2 +
+    (1 - alpha) ** 2 * sdRetr ** 2 +
+    0.25 * disagreementCapped
   const sd = Math.sqrt(Math.max(0, varianceBlend))
 
   return {
@@ -361,7 +400,9 @@ export async function predictCalibratedMood(input: PredictInput): Promise<MoodPr
     sd,
     alpha,
     model: model ? { mean: muModel, sd: sdModel, trainingN: model.trainingN } : null,
-    retrieved: retrieved ? { mean: muRetr, sd: sdRetr, supportN: support } : null,
+    retrieved: retrieved
+      ? { mean: muRetr, sd: sdRetr, supportN: retrieved.supportN, effectiveSupport }
+      : null,
     episodes: episodes.map((e) => ({
       entryId: e.entry.entryId,
       timestamp: e.entry.timestamp,

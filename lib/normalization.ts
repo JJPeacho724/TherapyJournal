@@ -1,3 +1,5 @@
+import { STD_FLOOR, Z_SCORE_CLAMP } from '@/lib/constants'
+
 export type RunningStats = {
   mean: number
   std: number
@@ -13,15 +15,31 @@ export type EwmaStats = {
 
 const LN2 = Math.log(2)
 
+/** Clamp a number to [lo, hi]. */
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, v))
+}
+
+/**
+ * Calculate a z-score from a raw value and a baseline.
+ *
+ * Hardening:
+ *  - A std floor of {@link STD_FLOOR} prevents division-by-near-zero.
+ *  - The result is clamped to ±{@link Z_SCORE_CLAMP}.
+ *  - Returns 0 when baseline has fewer than 2 observations (cold-start).
+ */
 export function calculateZScore(
   rawScore: number,
   baseline: { mean: number; std: number; count: number }
 ): number {
   if (!Number.isFinite(rawScore)) return 0
   if (!baseline || baseline.count < 2) return 0
-  const std = baseline.std
-  if (!Number.isFinite(std) || std <= 0) return 0
-  return (rawScore - baseline.mean) / std
+  // Apply std floor to prevent explosion when std ≈ 0
+  const std = Math.max(baseline.std, STD_FLOOR)
+  if (!Number.isFinite(std)) return 0
+  const z = (rawScore - baseline.mean) / std
+  // Clamp z-score magnitude
+  return clamp(z, -Z_SCORE_CLAMP, Z_SCORE_CLAMP)
 }
 
 /**
@@ -155,8 +173,12 @@ export function mapToValidatedScale(zScore: number, targetScale: 'phq9' | 'gad7'
 }
 
 /**
- * Reverse-code anxiety (1..10, higher worse) into "calmness" (1..10, higher better)
- * so z-score directionality is consistent across metrics.
+ * Reverse-code anxiety (1-10, higher = more anxious) into calmness
+ * (1-10, higher = calmer) so that z-score direction is consistent:
+ * positive z = "better than baseline" for both mood and calmness.
+ *
+ * Note: DB columns still use "anxiety_z_score" for backward compatibility,
+ * but they store calmness-direction z-scores.
  */
 export function anxietyToCalmness(anxietyScore: number): number {
   return 11 - anxietyScore

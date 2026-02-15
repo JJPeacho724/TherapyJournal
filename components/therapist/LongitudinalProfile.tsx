@@ -89,14 +89,14 @@ export function LongitudinalProfileView({ profile, patientName }: LongitudinalPr
           {(baseline.meanPhq9 != null || baseline.meanGad7 != null) && (
             <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-therapy-border">
               <MetricCell
-                label="PHQ-9 Estimate"
+                label="PHQ-9-Aligned Estimate"
                 value={baseline.meanPhq9}
                 format="score"
                 range="0–27"
                 severity={phq9Severity(baseline.meanPhq9)}
               />
               <MetricCell
-                label="GAD-7 Estimate"
+                label="GAD-7-Aligned Estimate"
                 value={baseline.meanGad7}
                 format="score"
                 range="0–21"
