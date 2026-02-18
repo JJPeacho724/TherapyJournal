@@ -202,6 +202,60 @@ Use `--skip-extraction` to avoid GPT-4 costs (embeddings are very cheap).
    npm run neo4j:eval
    ```
 
+## Synthetic Demo Mode
+
+A self-contained demo environment for workflow validation using 100% synthetic data. No real patient information is used or displayed.
+
+### Setup
+
+1. Add to your `.env.local`:
+   ```
+   DEMO_MODE=true
+   NEXT_PUBLIC_DEMO_MODE=true
+   ```
+
+2. Generate synthetic data (choose one):
+   ```bash
+   # Via seed script (direct, no server needed)
+   pnpm seed:synthetic
+
+   # Or with custom parameters
+   npx tsx scripts/seedSynthetic.ts --patients=3 --days=45
+
+   # Reset and regenerate
+   npx tsx scripts/seedSynthetic.ts --reset --patients=2 --days=45
+   ```
+
+3. Start the dev server:
+   ```bash
+   pnpm dev
+   ```
+
+4. Visit [http://localhost:3000/demo/admin/synthetic](http://localhost:3000/demo/admin/synthetic)
+
+### Demo Pages
+
+| Page | Description |
+|------|-------------|
+| `/demo/admin/synthetic` | Generate/reset cohorts, list synthetic patients |
+| `/demo/clinician/patients/[id]` | Z-score, volatility, slope charts + weekly summaries + evidence snippets + feedback panel |
+| `/demo/patient/[id]` | Simplified mood trend + weekly reflections (patient-friendly language) |
+| `/demo/admin/feedback` | Aggregated feedback by component and archetype |
+
+### Archetypes
+
+Six synthetic patient archetypes are available:
+- **Gradual Improver** — steady upward mood trend
+- **Volatile Stabilizer** — large oscillations that dampen over time
+- **Hidden Deteriorator** — slow decline masked by initially good scores
+- **Flat Non-Responder** — minimal score variation throughout
+- **Early Dropout** — stops generating entries after ~30% of the period
+- **Relapse then Recover** — improves, drops sharply, then recovers
+
+### Feature Flag
+
+When `DEMO_MODE` is not `true`, all `/demo/*` and `/api/demo/*` routes return 404. Demo data is stored in existing tables (`journal_entries`, `ai_extractions`) with `is_synthetic=true` and is invisible to production views (null `patient_id` excluded by RLS).
+
 ## AI Safety
 
 The AI components follow strict guidelines defined in `AI_RULES.md`:

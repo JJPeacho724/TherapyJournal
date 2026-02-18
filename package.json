@@ -9,6 +9,8 @@
     "lint": "next lint",
     "seed": "npx tsx scripts/seed-test-data.ts",
     "seed:demo": "npx tsx scripts/seed-test-data.ts",
+    "seed:synthetic": "npx tsx scripts/seedSynthetic.ts",
+    "seed:synthetic:reset": "npx tsx scripts/seedSynthetic.ts --reset",
     "neo4j:setup": "npx tsx scripts/neo4j-setup.ts",
     "neo4j:eval": "npx tsx scripts/neo4j-eval.ts",
     "ingest:public": "npx tsx scripts/ingest-public-data.ts",

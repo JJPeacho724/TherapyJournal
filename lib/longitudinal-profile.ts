@@ -385,7 +385,7 @@ function descriptiveStats(values: number[]): { mean: number; std: number } {
  * Simple linear regression slope. Returns null if < 2 points.
  * Input: array of { t: timestamp_ms, v: value }
  */
-function linearSlope(points: { t: number; v: number }[]): number | null {
+export function linearSlope(points: { t: number; v: number }[]): number | null {
   if (points.length < 2) return null
   const n = points.length
   let sumT = 0, sumV = 0, sumTV = 0, sumTT = 0

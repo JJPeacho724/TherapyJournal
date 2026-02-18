@@ -68,6 +68,16 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Demo mode gate: /demo/* and /api/demo/* return 404 when DEMO_MODE is not 'true'
+  const isDemoRoute = pathname.startsWith('/demo') || pathname.startsWith('/api/demo')
+  if (isDemoRoute && process.env.DEMO_MODE !== 'true') {
+    return new NextResponse(null, { status: 404 })
+  }
+  // Demo routes don't require authentication — skip auth checks
+  if (isDemoRoute) {
+    return response
+  }
+
   const { data: { session } } = await supabase.auth.getSession()
 
   // Public routes that don't require authentication

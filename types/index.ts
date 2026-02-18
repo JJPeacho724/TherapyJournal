@@ -278,9 +278,7 @@ export interface TimeOfDayMoodSummary {
   avgAnxiety: number
   entryCount: number
   hourRange: string
-}
-
-export interface HourlyMoodData {
+}export interface HourlyMoodData {
   hour: number
   displayHour: string
   mood: number | null
