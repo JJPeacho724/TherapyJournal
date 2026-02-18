@@ -10,7 +10,10 @@
  *   SUPABASE_SERVICE_ROLE_KEY
  */
 
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import path from 'path'
+
+dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') })
 import { createClient } from '@supabase/supabase-js'
 import { generateCohort, resetSyntheticData } from '../lib/synthetic/cohort-generator'
 
