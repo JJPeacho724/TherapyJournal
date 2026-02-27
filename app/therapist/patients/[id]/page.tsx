@@ -5,7 +5,7 @@ import { getProfile } from '@/lib/auth'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 import { MoodTimeline, SymptomChart, SleepCorrelation } from '@/components/charts'
 import { MoodBadge } from '@/components/journal'
-import { CrisisBanner } from '@/components/shared'
+import { CrisisBanner, ClinicalDecisionBanner, AIOutputLabel, CrisisKeywordDisclaimer } from '@/components/shared'
 import { LongitudinalProfileView } from '@/components/therapist/LongitudinalProfile'
 import { computeLongitudinalProfile } from '@/lib/longitudinal-profile'
 import type { MoodDataPoint, SymptomFrequency, SleepMoodCorrelation, JournalEntry } from '@/types'
@@ -150,9 +150,14 @@ export default async function PatientDetailPage({
         Back to Patients
       </Link>
 
+      <ClinicalDecisionBanner className="mb-4" />
+
       {/* Crisis Alerts */}
       {crisisAlerts && crisisAlerts.length > 0 && (
-        <CrisisBanner severity={crisisAlerts[0].severity as 'low' | 'medium' | 'high'} />
+        <>
+          <CrisisBanner severity={crisisAlerts[0].severity as 'low' | 'medium' | 'high'} />
+          <CrisisKeywordDisclaimer className="mt-1 mb-2" />
+        </>
       )}
 
       {/* Header */}

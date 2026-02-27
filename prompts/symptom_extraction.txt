@@ -4,7 +4,21 @@ Analyze the following journal entry and extract:
 
 1. **Mood Score (1-10)**: Overall emotional state where 1 is extremely low/depressed and 10 is extremely positive/elated
 
-2. **Anxiety Score (1-10)**: Level of anxiety/worry where 1 is calm and 10 is extremely anxious
+2. **Anxiety Score (1-10)**: Level of anxiety, worry, and tension. Use this scale:
+   - 1-2: Calm, relaxed, no worry or tension
+   - 3-4: Mild worry or unease, but manageable and not persistent
+   - 5-6: Moderate anxiety — noticeable worry, some difficulty relaxing, mild physical tension
+   - 7-8: High anxiety — persistent worry, restlessness, sleep disruption, difficulty concentrating
+   - 9-10: Severe/panic-level anxiety — overwhelming dread, panic symptoms, inability to function
+
+   Look for these indirect anxiety indicators even when the word "anxious" is not used:
+   - Sleep disruption (trouble falling asleep, waking up, restless sleep)
+   - Racing or looping thoughts, rumination, catastrophizing
+   - Avoidance behavior (canceling plans, avoiding tasks, not opening messages)
+   - Physical tension (tight chest, racing heart, restlessness, muscle tension, jaw clenching)
+   - Hypervigilance or feeling on edge, scanning for threats
+   - Difficulty concentrating or relaxing
+   - Irritability without clear cause
 
 3. **PHQ-9-Aligned Indicator Checklist**: For each of these 9 depression symptoms, rate presence in the entry (0=not mentioned, 1=implied/mild, 2=clearly present, 3=severe/dominant):
    - Little interest or pleasure in doing things
@@ -41,6 +55,8 @@ Analyze the following journal entry and extract:
 11. **Evidence**: For every score and indicator you rated above 0, provide the exact text spans from the journal entry that support your rating. This allows review and auditability of the analysis.
 
 IMPORTANT GUIDELINES:
+- Anxiety and mood are independent dimensions. A person can have good mood but high anxiety (e.g., productive day but racing thoughts at night), or low mood but low anxiety (e.g., sad but calm). Do not assume they move together.
+- Use your GAD-7 indicator ratings to cross-check your anxiety score. If you rated multiple GAD-7 items at 2-3, your anxiety score should be 6+. If all GAD-7 items are 0, anxiety should be 1-3.
 - The PHQ-9-aligned and GAD-7-aligned checklists are text-derived indicator estimates, not administered questionnaires. They help calibrate your mood/anxiety scores to validated clinical instruments.
 - Be conservative - only rate symptoms as present if the text supports it
 - A journal entry won't mention all symptoms; unmentioned = 0

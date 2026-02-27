@@ -1,27 +1,33 @@
 /**
  * Template-based synthetic journal text generator.
  *
- * Produces 3-8 sentence journal entries consistent with mood level and themes.
+ * Produces 3-8 sentence journal entries consistent with mood level, anxiety
+ * level, and themes. Anxiety-driven themes use the anxiety band for sentence
+ * selection so journal text reflects anxiety independently from mood.
  * All text is synthetic — no real patient language.
  */
 
 import type { EvidenceSnippetItem } from '@/types/synthetic'
 
-const MOOD_BANDS = {
-  low: { range: [1, 3.5] as const, label: 'low' },
-  mid: { range: [3.5, 6.5] as const, label: 'mid' },
-  high: { range: [6.5, 10] as const, label: 'high' },
-} as const
+type Band = 'low' | 'mid' | 'high'
 
-type MoodBand = keyof typeof MOOD_BANDS
-
-function getMoodBand(mood: number): MoodBand {
+function getMoodBand(mood: number): Band {
   if (mood <= 3.5) return 'low'
   if (mood <= 6.5) return 'mid'
   return 'high'
 }
 
-const TEMPLATES: Record<MoodBand, string[]> = {
+function getAnxietyBand(anxiety: number): Band {
+  if (anxiety <= 3.5) return 'low'
+  if (anxiety <= 6.5) return 'mid'
+  return 'high'
+}
+
+const ANXIETY_DRIVEN_THEMES = new Set([
+  'worry', 'physical_anxiety', 'avoidance', 'hypervigilance', 'panic', 'rumination',
+])
+
+const TEMPLATES: Record<Band, string[]> = {
   low: [
     'Today was really tough. I could barely get out of bed and everything felt overwhelming.',
     'I felt drained all day. It was hard to focus on anything and I kept zoning out.',
@@ -54,7 +60,7 @@ const TEMPLATES: Record<MoodBand, string[]> = {
   ],
 }
 
-const THEME_SENTENCES: Record<string, Record<MoodBand, string[]>> = {
+const THEME_SENTENCES: Record<string, Record<Band, string[]>> = {
   sleep: {
     low: [
       'I barely slept last night, maybe three or four hours.',
@@ -85,16 +91,16 @@ const THEME_SENTENCES: Record<string, Record<MoodBand, string[]>> = {
   },
   rumination: {
     low: [
-      'I kept replaying the same thoughts over and over. It felt like a loop I could not escape.',
-      'My mind was stuck on negative patterns again. I could not stop overthinking.',
+      'My thoughts felt clearer today. Less looping and more forward-looking.',
+      'I noticed I was not ruminating as much, which was a relief.',
     ],
     mid: [
       'I caught myself ruminating a few times but managed to redirect my focus somewhat.',
       'Had some repetitive thoughts but they were not as intense as before.',
     ],
     high: [
-      'My thoughts felt clearer today. Less looping and more forward-looking.',
-      'I noticed I was not ruminating as much, which was a relief.',
+      'I kept replaying the same thoughts over and over. It felt like a loop I could not escape.',
+      'My mind was stuck on negative patterns again. I could not stop overthinking.',
     ],
   },
   motivation: {
@@ -127,16 +133,16 @@ const THEME_SENTENCES: Record<string, Record<MoodBand, string[]>> = {
   },
   panic: {
     low: [
-      'I had a moment of intense unease with a racing heart. It passed but left me shaken.',
-      'I felt a wave of tension and restlessness that came out of nowhere.',
+      'I felt calm most of the day. No major spikes of tension.',
+      'My nervous system felt more settled today. I could handle things calmly.',
     ],
     mid: [
       'I had a brief moment of unease but used breathing exercises to settle it.',
       'Some nervous energy today but nothing I could not manage.',
     ],
     high: [
-      'I felt calm most of the day. No major spikes of tension.',
-      'My nervous system felt more settled today. I could handle things calmly.',
+      'I had a moment of intense unease with a racing heart. It passed but left me shaken.',
+      'I felt a wave of tension and restlessness that came out of nowhere.',
     ],
   },
   irritability: {
@@ -223,9 +229,65 @@ const THEME_SENTENCES: Record<string, Record<MoodBand, string[]>> = {
       'I went for a long run and it cleared my head. Exercise is really helping.',
     ],
   },
+  worry: {
+    low: [
+      'My mind felt clear and unburdened today. I was not worried about much at all.',
+      'I noticed I was not carrying as much worry as usual. That felt freeing.',
+    ],
+    mid: [
+      'I had some worries floating around but was able to set them aside for parts of the day.',
+      'A few things were on my mind today but the worry was not overwhelming.',
+    ],
+    high: [
+      'I could not stop worrying today. My mind kept jumping to worst-case scenarios about everything.',
+      'There was a constant sense of dread hanging over me. I kept asking myself what if something goes wrong.',
+    ],
+  },
+  physical_anxiety: {
+    low: [
+      'My body felt relaxed today. No tension or tightness to speak of.',
+      'I noticed my muscles were not clenched like they usually are. It was a relief.',
+    ],
+    mid: [
+      'I had some tension in my shoulders and neck but stretching helped a bit.',
+      'My body felt a little keyed up but it was not as bad as some days.',
+    ],
+    high: [
+      'My chest felt tight most of the day and my heart kept racing for no reason.',
+      'I noticed my shoulders were tense and my jaw was clenched. My body feels like it is bracing for something.',
+    ],
+  },
+  avoidance: {
+    low: [
+      'I tackled things I had been putting off without the usual dread. It felt productive.',
+      'I did not feel the need to avoid anything today. Just got things done.',
+    ],
+    mid: [
+      'I pushed through some avoidance today. Made myself do a few things I had been dodging.',
+      'I noticed I was avoiding certain tasks but managed to do at least one of them.',
+    ],
+    high: [
+      'I avoided opening my emails and messages all day. The thought of what might be there was too much.',
+      'I kept putting off tasks because the idea of starting them made my stomach drop.',
+    ],
+  },
+  hypervigilance: {
+    low: [
+      'I felt safe and settled today. I was not looking over my shoulder or bracing for bad news.',
+      'My guard was down in a good way. I felt at ease with my surroundings.',
+    ],
+    mid: [
+      'I caught myself being overly watchful a few times but managed to bring myself back.',
+      'I was a bit more alert than usual but it did not completely take over my day.',
+    ],
+    high: [
+      'I could not stop scanning for things that might go wrong. Every sound made me tense.',
+      'I felt on high alert all day, like something bad was about to happen even though nothing was.',
+    ],
+  },
 }
 
-const CLOSING_SENTENCES: Record<MoodBand, string[]> = {
+const CLOSING_SENTENCES: Record<Band, string[]> = {
   low: [
     'I hope tomorrow is at least a little better.',
     'Going to try to rest and not think too much.',
@@ -246,26 +308,34 @@ const CLOSING_SENTENCES: Record<MoodBand, string[]> = {
 /**
  * Generate a synthetic journal entry text and evidence snippets.
  *
+ * Anxiety-driven themes (worry, physical_anxiety, avoidance, hypervigilance,
+ * panic, rumination) select sentences based on the anxiety band so that
+ * journal text reflects anxiety independently from mood.
+ *
  * @param mood - Current mood score (1-10)
+ * @param anxiety - Current anxiety score (1-10)
  * @param themes - Selected themes for this entry
  * @param rng - Seeded random function
  * @returns Journal text and evidence snippets mapping quotes to themes
  */
 export function generateJournalEntry(
   mood: number,
+  anxiety: number,
   themes: string[],
   rng: () => number
 ): { text: string; evidenceSnippets: EvidenceSnippetItem[] } {
-  const band = getMoodBand(mood)
+  const moodBand = getMoodBand(mood)
+  const anxBand = getAnxietyBand(anxiety)
   const sentences: string[] = []
   const evidenceSnippets: EvidenceSnippetItem[] = []
 
-  // Opening sentence
-  const openers = TEMPLATES[band]
+  // Opening sentence (always mood-driven)
+  const openers = TEMPLATES[moodBand]
   sentences.push(pick(openers, rng))
 
-  // Theme sentences (1-2 per theme)
+  // Theme sentences — anxiety-driven themes use anxiety band
   for (const theme of themes) {
+    const band = ANXIETY_DRIVEN_THEMES.has(theme) ? anxBand : moodBand
     const themeSentences = THEME_SENTENCES[theme]?.[band]
     if (themeSentences && themeSentences.length > 0) {
       const sentence = pick(themeSentences, rng)
@@ -277,7 +347,8 @@ export function generateJournalEntry(
   // Optionally add a second sentence for the first theme
   if (themes.length > 0 && rng() > 0.5) {
     const extraTheme = themes[0]
-    const extraPool = THEME_SENTENCES[extraTheme]?.[band]
+    const extraBand = ANXIETY_DRIVEN_THEMES.has(extraTheme) ? anxBand : moodBand
+    const extraPool = THEME_SENTENCES[extraTheme]?.[extraBand]
     if (extraPool && extraPool.length > 1) {
       const existing = sentences.slice(1)
       const remaining = extraPool.filter(s => !existing.includes(s))
@@ -287,8 +358,8 @@ export function generateJournalEntry(
     }
   }
 
-  // Closing
-  sentences.push(pick(CLOSING_SENTENCES[band], rng))
+  // Closing (mood-driven)
+  sentences.push(pick(CLOSING_SENTENCES[moodBand], rng))
 
   return {
     text: sentences.join(' '),

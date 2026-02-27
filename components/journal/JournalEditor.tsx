@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 
+const MAX_CHARS = 5000
+
 interface JournalEditorProps {
   value: string
   onChange: (value: string) => void
@@ -10,6 +12,7 @@ interface JournalEditorProps {
   autoFocus?: boolean
   guidedPrompt?: string
   onSave?: () => void
+  maxLength?: number
 }
 
 export function JournalEditor({
@@ -20,9 +23,13 @@ export function JournalEditor({
   autoFocus = false,
   guidedPrompt,
   onSave,
+  maxLength = MAX_CHARS,
 }: JournalEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [wordCount, setWordCount] = useState(0)
+  const charCount = value.length
+  const isOverLimit = charCount > maxLength
+  const isNearLimit = charCount > maxLength * 0.9
 
   useEffect(() => {
     const words = value.trim() ? value.trim().split(/\s+/).length : 0
@@ -78,11 +85,18 @@ export function JournalEditor({
           <span className="text-xs text-therapy-muted/70">
             {wordCount} {wordCount === 1 ? 'word' : 'words'}
           </span>
-          {onSave && (
-            <span className="text-xs text-therapy-muted/50">
-              Ctrl+S to save
+          <div className="flex items-center gap-3">
+            <span className={`text-xs transition-colors ${
+              isOverLimit ? 'text-red-500 font-medium' : isNearLimit ? 'text-amber-500' : 'text-therapy-muted/50'
+            }`}>
+              {charCount.toLocaleString()}/{maxLength.toLocaleString()}
             </span>
-          )}
+            {onSave && (
+              <span className="text-xs text-therapy-muted/50">
+                Ctrl+S to save
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

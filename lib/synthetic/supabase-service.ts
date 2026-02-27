@@ -1,23 +1,13 @@
 /**
  * Server-only Supabase service-role client for synthetic data operations.
  *
- * Does NOT use cookies or browser context. Uses the service role key
- * which bypasses RLS — appropriate for demo data management only.
- *
- * Uses `any` for the Database generic to allow operations on tables
- * not present in the auto-generated types (synthetic_patients,
- * clinician_feedback, new columns on journal_entries).
+ * Creates a fresh client per call (no singleton) to avoid stale auth state
+ * in the Next.js dev server's hot-reload environment.
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let client: SupabaseClient<any> | null = null
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getServiceClient(): SupabaseClient<any> {
-  if (client) return client
-
+export function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -27,9 +17,12 @@ export function getServiceClient(): SupabaseClient<any> {
     )
   }
 
-  client = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return createClient<any>(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
   })
-
-  return client
 }

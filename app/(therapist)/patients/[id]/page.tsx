@@ -5,7 +5,7 @@ import { getProfile } from '@/lib/auth'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 import { MoodTimeline, SymptomChart, SleepCorrelation } from '@/components/charts'
 import { MoodBadge, JournalCard } from '@/components/journal'
-import { CrisisBanner } from '@/components/shared'
+import { CrisisBanner, ClinicalDecisionBanner, AIOutputLabel, CrisisKeywordDisclaimer } from '@/components/shared'
 import type { MoodDataPoint, SymptomFrequency, SleepMoodCorrelation, JournalEntry } from '@/types'
 import { interpretGAD7, interpretPHQ9, getReliableChangeIndex } from '@/lib/clinical-scales'
 
@@ -159,12 +159,17 @@ export default async function PatientDetailPage({
         <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        Back to Patients
+        Back to patients
       </Link>
+
+      <ClinicalDecisionBanner className="mb-4" />
 
       {/* Crisis Alerts */}
       {crisisAlerts && crisisAlerts.length > 0 && (
-        <CrisisBanner severity={crisisAlerts[0].severity as 'low' | 'medium' | 'high'} />
+        <>
+          <CrisisBanner severity={crisisAlerts[0].severity as 'low' | 'medium' | 'high'} />
+          <CrisisKeywordDisclaimer className="mt-1 mb-2" />
+        </>
       )}
 
       {/* Header */}

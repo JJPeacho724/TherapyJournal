@@ -3,6 +3,8 @@ import { createChatCompletion, TEMPERATURE, MAX_TOKENS } from '@/lib/openai'
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
+import { aiGuidedPromptLimiter, getClientIdentifier } from '@/lib/rate-limit'
+import { logAccess } from '@/lib/access-log'
 import {
   retrieveRichUserContext,
   type RichUserContext,
@@ -284,13 +286,24 @@ function buildAssociationsSummary(associations: UserFeatureAssociation[]): strin
 // POST /api/ai/guided-prompt - Get a guided journaling prompt or follow-up
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIdentifier(request)
+    const { allowed, retryAfterMs } = aiGuidedPromptLimiter.check(clientIp)
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+      )
+    }
+
     const supabase = await createServerSupabaseClient()
-    
+
     // Verify user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    logAccess({ userId: user.id, action: 'ran_guided_prompt', route: '/api/ai/guided-prompt' })
 
     const body = await request.json()
     const { mood_hint, conversation_history, is_followup, is_initial } = body as {

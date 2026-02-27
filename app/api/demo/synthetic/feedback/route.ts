@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { demoPModeGuard } from '@/lib/demo-mode'
 import { getServiceClient } from '@/lib/synthetic/supabase-service'
 
+export const dynamic = 'force-dynamic'
+
 /** POST: Save a clinician feedback entry */
 export async function POST(request: Request) {
   const guard = demoPModeGuard()

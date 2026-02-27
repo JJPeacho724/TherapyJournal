@@ -1,6 +1,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 import type { CreateJournalRequest } from '@/types'
+import { validateJournalContent } from '@/lib/sanitize'
+import { logAccess } from '@/lib/access-log'
 
 // GET /api/journal - List patient's journal entries
 export async function GET(request: NextRequest) {
@@ -53,6 +55,8 @@ export async function GET(request: NextRequest) {
         : entry.ai_extraction || null,
     }))
 
+    logAccess({ userId: user.id, action: 'viewed_journal_list', route: '/api/journal' })
+
     return NextResponse.json({ entries: transformedEntries })
   } catch (error) {
     console.error('Journal GET error:', error)
@@ -74,16 +78,19 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body: CreateJournalRequest = await request.json()
     
-    if (!body.content || body.content.trim().length === 0) {
-      return NextResponse.json({ error: 'Content is required' }, { status: 400 })
+    const { valid, sanitized, error: validationError } = validateJournalContent(body.content)
+    if (!valid) {
+      return NextResponse.json({ error: validationError }, { status: 400 })
     }
+
+    logAccess({ userId: user.id, action: 'created_journal_entry', route: '/api/journal' })
 
     // Create journal entry
     const { data: entry, error: entryError } = await supabase
       .from('journal_entries')
       .insert({
         patient_id: user.id,
-        content: body.content,
+        content: sanitized,
         is_draft: body.is_draft ?? false,
         shared_with_therapist: body.shared_with_therapist ?? false,
       })

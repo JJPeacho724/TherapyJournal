@@ -1,6 +1,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 import type { UpdateJournalRequest } from '@/types'
+import { sanitizeText } from '@/lib/sanitize'
+import { logAccess } from '@/lib/access-log'
 
 // GET /api/journal/[id] - Get a single journal entry
 export async function GET(
@@ -48,6 +50,8 @@ export async function GET(
         : entry.ai_extraction || null,
     }
 
+    logAccess({ userId: user.id, action: 'viewed_journal_entry', route: `/api/journal/${id}`, metadata: { entry_id: id } })
+
     return NextResponse.json({ entry: transformedEntry })
   } catch (error) {
     console.error('Journal GET error:', error)
@@ -73,9 +77,11 @@ export async function PATCH(
     // Parse request body
     const body: UpdateJournalRequest = await request.json()
 
+    logAccess({ userId: user.id, action: 'updated_journal_entry', route: `/api/journal/${id}`, metadata: { entry_id: id } })
+
     // Update journal entry
     const updateData: Record<string, unknown> = {}
-    if (body.content !== undefined) updateData.content = body.content
+    if (body.content !== undefined) updateData.content = sanitizeText(String(body.content))
     if (body.is_draft !== undefined) updateData.is_draft = body.is_draft
     if (body.shared_with_therapist !== undefined) updateData.shared_with_therapist = body.shared_with_therapist
 
@@ -140,6 +146,8 @@ export async function DELETE(
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    logAccess({ userId: user.id, action: 'deleted_journal_entry', route: `/api/journal/${id}`, metadata: { entry_id: id } })
 
     // Delete entry (cascade will handle related records)
     const { error } = await supabase

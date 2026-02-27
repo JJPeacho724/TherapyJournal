@@ -21,6 +21,10 @@ import { compositeScore } from './metrics-engine'
 import { mapToValidatedScale } from '@/lib/normalization'
 import { ARCHETYPE_LABELS } from '@/types/synthetic'
 
+const ANXIETY_EVIDENCE_THEMES = new Set([
+  'worry', 'physical_anxiety', 'avoidance', 'hypervigilance', 'panic', 'rumination',
+])
+
 const ALL_ARCHETYPES: Archetype[] = [
   'gradual_improver',
   'volatile_stabilizer',
@@ -105,8 +109,8 @@ export async function generateCohort(
         entryDate.setHours(8 + Math.floor(rng() * 12), Math.floor(rng() * 60))
 
         const { mood, anxiety } = generateDayScores(config, day, clampedDays, rng)
-        const themes = pickThemes(config, mood, rng)
-        const { text, evidenceSnippets } = generateJournalEntry(mood, themes, rng)
+        const themes = pickThemes(config, mood, anxiety, rng)
+        const { text, evidenceSnippets } = generateJournalEntry(mood, anxiety, themes, rng)
 
         // PHQ-9 and GAD-7 on every 7th day
         const comp = compositeScore(mood, anxiety)
@@ -145,13 +149,22 @@ export async function generateCohort(
             gad7_estimate: gad7Total,
             evidence: evidenceSnippets.length > 0
               ? {
-                  mood_score: evidenceSnippets.map((s) => ({
-                    quote: s.quote,
-                    start_char: 0,
-                    end_char: s.quote.length,
-                    rationale: `Supports ${s.theme} theme`,
-                  })),
-                  anxiety_score: [],
+                  mood_score: evidenceSnippets
+                    .filter((s) => !ANXIETY_EVIDENCE_THEMES.has(s.theme))
+                    .map((s) => ({
+                      quote: s.quote,
+                      start_char: text.indexOf(s.quote),
+                      end_char: text.indexOf(s.quote) + s.quote.length,
+                      rationale: `Supports ${s.theme} theme`,
+                    })),
+                  anxiety_score: evidenceSnippets
+                    .filter((s) => ANXIETY_EVIDENCE_THEMES.has(s.theme))
+                    .map((s) => ({
+                      quote: s.quote,
+                      start_char: text.indexOf(s.quote),
+                      end_char: text.indexOf(s.quote) + s.quote.length,
+                      rationale: `Supports ${s.theme} theme (anxiety indicator)`,
+                    })),
                   phq9_indicators: {},
                   gad7_indicators: {},
                   crisis_detected: [],

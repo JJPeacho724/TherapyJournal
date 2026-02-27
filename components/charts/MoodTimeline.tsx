@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import type { MoodDataPoint } from '@/types'
 import { TimeRangeSelector, filterByTimeRange, type TimeRange } from './TimeRangeSelector'
 
@@ -15,7 +15,7 @@ export function MoodTimeline({ data, showAnxiety = true }: MoodTimelineProps) {
 
   if (data.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center text-therapy-muted">
+      <div className="h-52 sm:h-64 flex items-center justify-center text-therapy-muted">
         No mood data available yet
       </div>
     )
@@ -38,7 +38,7 @@ export function MoodTimeline({ data, showAnxiety = true }: MoodTimelineProps) {
   }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/95 backdrop-blur-sm border border-sage-200 rounded-xl shadow-lg px-3 py-2">
+        <div className="bg-white/95 backdrop-blur-sm border border-sage-200 rounded-xl shadow-lg px-3 py-2 max-w-[200px]">
           <p className="text-xs text-therapy-muted mb-1">{label}</p>
           {payload.map((p) => (
             <div key={p.dataKey} className="flex items-center gap-2">
@@ -47,7 +47,7 @@ export function MoodTimeline({ data, showAnxiety = true }: MoodTimelineProps) {
                 style={{ backgroundColor: p.color }}
               />
               <span className="text-sm text-therapy-text">
-                {p.dataKey === 'mood' ? 'Mood' : 'Anxiety'}: {p.value}
+                {p.dataKey === 'mood' ? 'Mood' : 'Anxiety'}: {p.value}/10
               </span>
             </div>
           ))}
@@ -65,13 +65,13 @@ export function MoodTimeline({ data, showAnxiety = true }: MoodTimelineProps) {
       </div>
 
       {formattedData.length === 0 ? (
-        <div className="h-56 flex items-center justify-center text-therapy-muted/60">
+        <div className="h-52 sm:h-64 flex items-center justify-center text-therapy-muted/60">
           <p className="text-sm">No entries in this time period</p>
         </div>
       ) : (
-        <div className="h-56">
+        <div className="h-52 sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={formattedData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={formattedData} margin={{ top: 8, right: 12, left: -10, bottom: 4 }}>
               <defs>
                 <linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#6b8f71" stopOpacity={0.2} />
@@ -82,19 +82,22 @@ export function MoodTimeline({ data, showAnxiety = true }: MoodTimelineProps) {
                   <stop offset="100%" stopColor="#d4a373" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0eeeb" vertical={false} />
               <XAxis
                 dataKey="displayDate"
-                tick={{ fontSize: 11, fill: '#8a8a8a' }}
+                tick={{ fontSize: 10, fill: '#8a8a8a' }}
                 tickLine={false}
                 axisLine={false}
-                dy={8}
+                dy={4}
+                interval="preserveStartEnd"
               />
               <YAxis
                 domain={[1, 10]}
-                tick={{ fontSize: 11, fill: '#b0b0b0' }}
+                ticks={[2, 4, 6, 8, 10]}
+                tick={{ fontSize: 10, fill: '#b0b0b0' }}
                 tickLine={false}
                 axisLine={false}
-                width={35}
+                width={32}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e8e5e0', strokeWidth: 1 }} />
               <Area

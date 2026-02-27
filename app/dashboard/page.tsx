@@ -62,7 +62,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-therapy-background">
       <Navbar role="patient" userName={profile.full_name || undefined} />
       <main className="pt-16">
-        <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {/* Crisis Banner */}
           {crisisAlerts && crisisAlerts.length > 0 && (
             <CrisisBanner severity={crisisAlerts[0].severity as 'low' | 'medium' | 'high'} />

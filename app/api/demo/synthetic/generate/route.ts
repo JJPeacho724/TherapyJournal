@@ -3,6 +3,8 @@ import { demoPModeGuard } from '@/lib/demo-mode'
 import { getServiceClient } from '@/lib/synthetic/supabase-service'
 import { generateCohort } from '@/lib/synthetic/cohort-generator'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
   const guard = demoPModeGuard()
   if (guard) return guard

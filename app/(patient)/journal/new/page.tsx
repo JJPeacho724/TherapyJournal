@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { JournalEditor, MoodSelector, StructuredFields } from '@/components/journal'
 import { Button, Card } from '@/components/ui'
 import { DisclaimerBanner } from '@/components/shared'
+
+const MAX_CONTENT_LENGTH = 5000
 
 type GuidedStep = 'mood' | 'prompt' | 'write' | 'structured' | 'review'
 
@@ -34,6 +36,8 @@ export default function NewJournalPage() {
   const [shareWithTherapist, setShareWithTherapist] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loadingPrompt, setLoadingPrompt] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const savingRef = useRef(false)
 
   useEffect(() => {
     setHydrated(true)
@@ -98,8 +102,20 @@ export default function NewJournalPage() {
   }
 
   const handleSave = async (isDraft: boolean = false) => {
-    if (!content.trim() && !isDraft) return
+    if (savingRef.current) return
+    setSaveError('')
 
+    if (!content.trim() && !isDraft) {
+      setSaveError('Please write something before saving.')
+      return
+    }
+
+    if (content.length > MAX_CONTENT_LENGTH) {
+      setSaveError(`Entry is too long. Please shorten it to ${MAX_CONTENT_LENGTH.toLocaleString()} characters or fewer.`)
+      return
+    }
+
+    savingRef.current = true
     setSaving(true)
     try {
       const response = await fetch('/api/journal', {
@@ -114,7 +130,10 @@ export default function NewJournalPage() {
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to save')
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || 'Failed to save')
+      }
 
       const data = await response.json()
 
@@ -133,9 +152,10 @@ export default function NewJournalPage() {
       router.refresh()
     } catch (error) {
       console.error('Save error:', error)
-      alert('Something went wrong. Please try again.')
+      setSaveError(error instanceof Error ? error.message : 'Something went wrong. Please try again.')
     } finally {
       setSaving(false)
+      savingRef.current = false
     }
   }
 
@@ -377,14 +397,20 @@ export default function NewJournalPage() {
               </button>
             </div>
 
+            {saveError && (
+              <div className="mb-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl p-3 text-center">
+                {saveError}
+              </div>
+            )}
+
             <div className="flex gap-3 justify-center">
               <Button variant="ghost" onClick={() => setGuidedStep('structured')}>
                 Back
               </Button>
-              <Button variant="secondary" onClick={() => handleSave(true)} loading={saving}>
+              <Button variant="secondary" onClick={() => handleSave(true)} loading={saving} disabled={saving}>
                 Save as draft
               </Button>
-              <Button onClick={() => handleSave(false)} loading={saving}>
+              <Button onClick={() => handleSave(false)} loading={saving} disabled={saving}>
                 Save entry
               </Button>
             </div>
@@ -465,15 +491,22 @@ export default function NewJournalPage() {
         </button>
       </div>
 
+      {/* Error display */}
+      {saveError && (
+        <div className="mt-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl p-3 text-center">
+          {saveError}
+        </div>
+      )}
+
       {/* Actions */}
       <div className="mt-8 flex gap-3 justify-center">
         <Button variant="ghost" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button variant="secondary" onClick={() => handleSave(true)} loading={saving}>
+        <Button variant="secondary" onClick={() => handleSave(true)} loading={saving} disabled={saving}>
           Save as draft
         </Button>
-        <Button onClick={() => handleSave(false)} loading={saving} disabled={!content.trim()}>
+        <Button onClick={() => handleSave(false)} loading={saving} disabled={saving || !content.trim() || content.length > MAX_CONTENT_LENGTH}>
           Save entry
         </Button>
       </div>

@@ -5,7 +5,7 @@
 
 /** Server-side check (API routes, server components) */
 export function isDemoMode(): boolean {
-  return process.env.DEMO_MODE === 'true'
+  return process.env.DEMO_MODE === 'true' || process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 }
 
 /** Client-side check (client components) */

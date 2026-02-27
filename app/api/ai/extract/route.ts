@@ -8,10 +8,23 @@ import type { AIExtractionResponseV2, ExtractionEvidence } from '@/types'
 import { anxietyToCalmness, calculateZScore, updateEwmaStats } from '@/lib/normalization'
 import { validateEvidenceSpans } from '@/lib/evidence-validation'
 import { MIN_ENTRIES_FOR_Z } from '@/lib/constants'
+import { aiExtractionLimiter, getClientIdentifier } from '@/lib/rate-limit'
+import { sanitizeText, MAX_JOURNAL_CONTENT_LENGTH } from '@/lib/sanitize'
+import { logAccess } from '@/lib/access-log'
+import { withRetry, ApiTimeoutError } from '@/lib/api-helpers'
 
 // POST /api/ai/extract - Extract mood/symptoms from journal entry
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIdentifier(request)
+    const { allowed, retryAfterMs } = aiExtractionLimiter.check(clientIp)
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+      )
+    }
+
     const supabase = await createServerSupabaseClient()
     
     // Verify user is authenticated
@@ -20,38 +33,54 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { entry_id, content } = await request.json()
+    const { entry_id, content: rawContent } = await request.json()
 
-    if (!content || content.trim().length === 0) {
+    if (!rawContent || String(rawContent).trim().length === 0) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 })
     }
+
+    if (String(rawContent).length > MAX_JOURNAL_CONTENT_LENGTH) {
+      return NextResponse.json(
+        { error: `Content exceeds maximum length of ${MAX_JOURNAL_CONTENT_LENGTH} characters` },
+        { status: 400 }
+      )
+    }
+
+    const content = sanitizeText(String(rawContent))
+
+    logAccess({ userId: user.id, action: 'ran_ai_extraction', route: '/api/ai/extract', metadata: { entry_id } })
 
     // Load the prompt template
     const promptPath = path.join(process.cwd(), 'prompts', 'symptom_extraction.txt')
     const promptTemplate = await fs.readFile(promptPath, 'utf-8')
 
-    // Call OpenAI
-    const response = await createChatCompletion(
-      [
-        {
-          role: 'system',
-          content: promptTemplate,
-        },
-        {
-          role: 'user',
-          content: content,
-        },
-      ],
-      {
-        temperature: TEMPERATURE.extraction,
-        maxTokens: MAX_TOKENS.extraction,
+    // Call OpenAI with timeout and retry
+    let response: string
+    try {
+      response = await withRetry(
+        () => createChatCompletion(
+          [
+            { role: 'system', content: promptTemplate },
+            { role: 'user', content: content },
+          ],
+          { temperature: TEMPERATURE.extraction, maxTokens: MAX_TOKENS.extraction }
+        ),
+        { maxRetries: 1, baseDelayMs: 2000, timeoutMs: 30000 }
+      )
+    } catch (err) {
+      if (err instanceof ApiTimeoutError) {
+        console.error('AI extraction timed out after retries')
+        return NextResponse.json(
+          { error: 'AI analysis is taking longer than expected. Your entry has been saved — analysis will complete shortly.' },
+          { status: 504 }
+        )
       }
-    )
+      throw err
+    }
 
     // Parse the JSON response
     let extraction: AIExtractionResponseV2
     try {
-      // Clean up potential markdown code blocks
       const cleanedResponse = response
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')

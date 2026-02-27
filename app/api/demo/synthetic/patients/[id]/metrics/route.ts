@@ -3,6 +3,8 @@ import { demoPModeGuard } from '@/lib/demo-mode'
 import { getServiceClient } from '@/lib/synthetic/supabase-service'
 import { computeMetricsTimeSeries } from '@/lib/synthetic/metrics-engine'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

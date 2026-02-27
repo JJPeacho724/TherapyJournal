@@ -663,12 +663,12 @@ async function main() {
     }
 
     console.log(`\n  Synthetic users (${userCounts.size}):`)
-    for (const [u, n] of [...userCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+    for (const [u, n] of Array.from(userCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 15)) {
       console.log(`    ${u}: ${n} entries`)
     }
 
     console.log(`\n  Categories:`)
-    for (const [c, n] of [...catCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+    for (const [c, n] of Array.from(catCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 15)) {
       console.log(`    ${c}: ${n}`)
     }
 
@@ -701,7 +701,7 @@ async function main() {
   // ---- Resolve synthetic user IDs to Supabase auth UUIDs ----
   console.log('\n👤 Creating synthetic users…')
 
-  const uniqueUsers = [...new Set(entries.map((e) => e.syntheticUserId))]
+  const uniqueUsers = Array.from(new Set(entries.map((e) => e.syntheticUserId)))
   const userIdMap = new Map<string, string>() // syntheticUserId → supabase uuid
 
   for (const synUser of uniqueUsers) {
@@ -991,7 +991,7 @@ async function main() {
   }
 
   // Persist per-user baselines
-  for (const [userId, moodBase] of moodBases.entries()) {
+  for (const [userId, moodBase] of Array.from(moodBases.entries())) {
     const anxBase = anxBases.get(userId) ?? { mean: 0, std: 0, count: 0, lastUpdatedAt: null }
     const windowStart = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
 

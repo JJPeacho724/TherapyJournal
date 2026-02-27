@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { demoPModeGuard } from '@/lib/demo-mode'
 import { getServiceClient } from '@/lib/synthetic/supabase-service'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

@@ -5,6 +5,8 @@ import { computeMetricsTimeSeries } from '@/lib/synthetic/metrics-engine'
 import { generateWeeklySummaries } from '@/lib/synthetic/weekly-summary'
 import type { EvidenceSnippetItem } from '@/types/synthetic'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

@@ -1,6 +1,6 @@
 'use client'
 
-import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, ZAxis } from 'recharts'
+import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, ZAxis, CartesianGrid } from 'recharts'
 import type { SleepMoodCorrelation } from '@/types'
 
 interface SleepCorrelationProps {
@@ -10,7 +10,7 @@ interface SleepCorrelationProps {
 export function SleepCorrelation({ data }: SleepCorrelationProps) {
   if (data.length === 0) {
     return (
-      <div className="h-56 flex items-center justify-center text-therapy-muted">
+      <div className="h-52 sm:h-56 flex items-center justify-center text-therapy-muted">
         Not enough sleep data yet
       </div>
     )
@@ -28,8 +28,9 @@ export function SleepCorrelation({ data }: SleepCorrelationProps) {
       ][Math.min(Math.max(Math.round(d.mood) - 1, 0), 9)]
 
       return (
-        <div className="bg-white/95 backdrop-blur-sm border border-sage-200 rounded-xl shadow-lg px-3 py-2">
-          <p className="text-sm text-therapy-text">{d.sleep_hours}h sleep</p>
+        <div className="bg-white/95 backdrop-blur-sm border border-sage-200 rounded-xl shadow-lg px-3 py-2 max-w-[200px]">
+          <p className="text-sm text-therapy-text">Sleep: {d.sleep_hours}h</p>
+          <p className="text-sm text-therapy-text">Mood: {d.mood}/10</p>
           <p className="text-xs text-therapy-muted">Felt {moodDesc.toLowerCase()}</p>
         </div>
       )
@@ -39,37 +40,36 @@ export function SleepCorrelation({ data }: SleepCorrelationProps) {
 
   return (
     <div>
-      <div className="h-56">
+      <div className="h-52 sm:h-56">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
+          <ScatterChart margin={{ top: 8, right: 12, left: -10, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0eeeb" />
             <XAxis
               type="number"
               dataKey="sleep_hours"
               domain={[0, 12]}
-              tick={{ fontSize: 11, fill: '#b0b0b0' }}
+              ticks={[0, 2, 4, 6, 8, 10, 12]}
+              tick={{ fontSize: 10, fill: '#b0b0b0' }}
               tickLine={false}
               axisLine={false}
+              label={{ value: 'Sleep (hours)', position: 'insideBottom', offset: -2, fontSize: 10, fill: '#8a8a8a' }}
             />
             <YAxis
               type="number"
               dataKey="mood"
               domain={[1, 10]}
-              tick={{ fontSize: 11, fill: '#b0b0b0' }}
+              ticks={[2, 4, 6, 8, 10]}
+              tick={{ fontSize: 10, fill: '#b0b0b0' }}
               tickLine={false}
               axisLine={false}
-              width={35}
+              width={32}
+              label={{ value: 'Mood (1-10)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#8a8a8a' }}
             />
-            <ZAxis range={[50, 50]} />
+            <ZAxis range={[60, 60]} />
             <Tooltip content={<CustomTooltip />} cursor={false} />
-            <Scatter data={data} fill="#56809c" fillOpacity={0.5} />
+            <Scatter data={data} fill="#56809c" fillOpacity={0.6} />
           </ScatterChart>
         </ResponsiveContainer>
-      </div>
-
-      {/* Axis labels */}
-      <div className="flex justify-between px-5 mt-1">
-        <span className="text-xs text-therapy-muted/60">Hours of sleep</span>
-        <span className="text-xs text-therapy-muted/60">Better mood ↑</span>
       </div>
     </div>
   )
