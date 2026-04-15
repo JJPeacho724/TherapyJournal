@@ -7,8 +7,6 @@ import { ZScoreTimeline } from '@/components/charts/ZScoreTimeline'
 import { VolatilityChart } from '@/components/charts/VolatilityChart'
 import { SlopeChart } from '@/components/charts/SlopeChart'
 import { FeedbackPanel } from '@/components/synthetic/FeedbackPanel'
-import { ClinicalDecisionBanner } from '@/components/shared/ClinicalDecisionBanner'
-import { AIOutputLabel } from '@/components/shared/AIOutputLabel'
 
 export default function ClinicianPatientPage({
   params,
@@ -90,8 +88,6 @@ export default function ClinicianPatientPage({
 
   return (
     <div className="space-y-6">
-      <ClinicalDecisionBanner />
-
       {/* Header */}
       <div className="flex items-center gap-4">
         <a
@@ -100,9 +96,6 @@ export default function ClinicianPatientPage({
         >
           &larr; Back to cohort
         </a>
-        <div className="ml-auto">
-          <AIOutputLabel variant="banner" />
-        </div>
       </div>
 
       <div>

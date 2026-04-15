@@ -6,10 +6,8 @@
 
 # testing
 /coverage
-/test-results/
 /playwright-report/
-/blob-report/
-/playwright/.cache/
+/test-results/
 
 # next.js
 /.next/
@@ -45,9 +43,6 @@ next-env.d.ts
 
 # Public dataset files (downloaded CSVs/TSVs)
 /data/
-
-# Generated evaluation reports
-/reports/
 
 # Windows reserved name artifact
 nul

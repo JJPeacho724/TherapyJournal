@@ -16,16 +16,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // HTTPS enforcement in production
-  if (
-    process.env.NODE_ENV === 'production' &&
-    request.headers.get('x-forwarded-proto') === 'http'
-  ) {
-    const httpsUrl = new URL(request.url)
-    httpsUrl.protocol = 'https:'
-    return NextResponse.redirect(httpsUrl, 301)
-  }
-
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -79,10 +69,8 @@ export async function middleware(request: NextRequest) {
   )
 
   // Demo mode gate: /demo/* and /api/demo/* return 404 when DEMO_MODE is not 'true'
-  // Use NEXT_PUBLIC_ prefix because middleware runs in Edge Runtime where
-  // only NEXT_PUBLIC_ env vars from .env.local are automatically available.
   const isDemoRoute = pathname.startsWith('/demo') || pathname.startsWith('/api/demo')
-  if (isDemoRoute && process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+  if (isDemoRoute && process.env.DEMO_MODE !== 'true') {
     return new NextResponse(null, { status: 404 })
   }
   // Demo routes don't require authentication — skip auth checks
@@ -90,7 +78,7 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getSession()
 
   // Public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/signup', '/api/auth/callback']
@@ -102,9 +90,6 @@ export async function middleware(request: NextRequest) {
   if (!session && !isPublicRoute) {
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirect', pathname)
-    if (sessionError) {
-      redirectUrl.searchParams.set('reason', 'session_expired')
-    }
     return NextResponse.redirect(redirectUrl)
   }
 

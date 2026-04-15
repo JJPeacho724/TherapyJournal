@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getProfile } from '@/lib/auth'
 import { Card } from '@/components/ui'
-import { CrisisBanner, AIOutputLabel, CrisisKeywordDisclaimer } from '@/components/shared'
+import { CrisisBanner } from '@/components/shared'
 import { EntryActions } from './EntryActions'
 import type { JournalEntry, CrisisSeverity } from '@/types'
 
@@ -81,10 +81,7 @@ export default async function JournalEntryPage({
 
       {/* Crisis Banner */}
       {extraction?.crisis_detected && (
-        <>
-          <CrisisBanner severity={(extraction.confidence ?? 0.5) > 0.7 ? 'high' : 'medium' as CrisisSeverity} />
-          <CrisisKeywordDisclaimer className="mt-1 mb-2 text-center" />
-        </>
+        <CrisisBanner severity={(extraction.confidence ?? 0.5) > 0.7 ? 'high' : 'medium' as CrisisSeverity} />
       )}
 
       {/* Header */}
@@ -129,12 +126,9 @@ export default async function JournalEntryPage({
       {/* Reflections section - more friendly take on AI insights */}
       {extraction && (extraction.emotions?.length > 0 || extraction.summary) && (
         <Card className="mb-6 bg-sage-50/50 border-sage-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-therapy-muted">
-              What we noticed
-            </h3>
-            <AIOutputLabel />
-          </div>
+          <h3 className="text-sm font-medium text-therapy-muted mb-4">
+            What we noticed
+          </h3>
 
           {extraction.summary && (
             <p className="text-therapy-text text-sm mb-4 italic">

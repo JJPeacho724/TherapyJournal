@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui'
 import { MoodTimeline, SymptomChart, SleepCorrelation, DailyMoodPattern } from '@/components/charts'
-import { Navbar, AIOutputLabel } from '@/components/shared'
+import { Navbar } from '@/components/shared'
 import {
   processMoodData,
   aggregateSymptoms,
@@ -48,7 +48,7 @@ export default async function InsightsPage() {
     <div className="min-h-screen bg-therapy-background">
       <Navbar role="patient" userName={profile.full_name || undefined} />
       <main className="pt-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="max-w-2xl mx-auto px-4 py-8">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
             <Link href="/dashboard">
@@ -60,9 +60,6 @@ export default async function InsightsPage() {
               </Button>
             </Link>
             <h1 className="text-xl font-normal text-therapy-text">A closer look</h1>
-            <div className="ml-auto">
-              <AIOutputLabel variant="banner" />
-            </div>
           </div>
 
           {moodData.length === 0 ? (
@@ -76,7 +73,7 @@ export default async function InsightsPage() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {/* Mood Over Time - full width */}
+              {/* Mood Over Time */}
               <Card>
                 <CardHeader>
                   <CardTitle>How your mood has moved</CardTitle>
@@ -86,48 +83,45 @@ export default async function InsightsPage() {
                 </CardContent>
               </Card>
 
-              {/* Two-column grid for secondary charts on md+ */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Time of Day Patterns */}
-                {timeOfDayData.some(t => t.entryCount > 0) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>By time of day</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <DailyMoodPattern data={timeOfDayData} />
-                      {bestTimeOfDay && worstTimeOfDay && bestTimeOfDay.timeOfDay !== worstTimeOfDay.timeOfDay && (
-                        <div className="mt-4 pt-4 border-t border-sage-100">
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div className="bg-sage-50 rounded-xl p-3">
-                              <p className="text-therapy-muted text-xs mb-1">Usually felt better</p>
-                              <p className="font-medium text-sage-700">{bestTimeOfDay.label}s</p>
-                            </div>
-                            <div className="bg-warm-50 rounded-xl p-3">
-                              <p className="text-therapy-muted text-xs mb-1">Often felt harder</p>
-                              <p className="font-medium text-warm-700">{worstTimeOfDay.label}s</p>
-                            </div>
+              {/* Time of Day Patterns */}
+              {timeOfDayData.some(t => t.entryCount > 0) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>By time of day</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DailyMoodPattern data={timeOfDayData} />
+                    {bestTimeOfDay && worstTimeOfDay && bestTimeOfDay.timeOfDay !== worstTimeOfDay.timeOfDay && (
+                      <div className="mt-4 pt-4 border-t border-sage-100">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="bg-sage-50 rounded-xl p-3">
+                            <p className="text-therapy-muted text-xs mb-1">Usually felt better</p>
+                            <p className="font-medium text-sage-700">{bestTimeOfDay.label}s</p>
+                          </div>
+                          <div className="bg-warm-50 rounded-xl p-3">
+                            <p className="text-therapy-muted text-xs mb-1">Often felt harder</p>
+                            <p className="font-medium text-warm-700">{worstTimeOfDay.label}s</p>
                           </div>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
-                {/* Topics */}
-                {symptomData.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>What came up most</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <SymptomChart data={symptomData.slice(0, 8)} />
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+              {/* Topics */}
+              {symptomData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>What came up most</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <SymptomChart data={symptomData.slice(0, 8)} />
+                  </CardContent>
+                </Card>
+              )}
 
-              {/* Sleep and Mood - full width */}
+              {/* Sleep and Mood */}
               {sleepMoodData.length > 0 && (
                 <Card>
                   <CardHeader>

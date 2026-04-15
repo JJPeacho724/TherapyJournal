@@ -51,8 +51,8 @@ export const ARCHETYPE_CONFIGS: Record<Archetype, ArchetypeConfig> = {
     moodCurve: (day, total) => 3 + (4 * day) / total,
     anxietyCurve: (day, total) => 7 - (4 * day) / total,
     dropoutDay: null,
-    themePool: ['motivation', 'sleep', 'social_connection', 'exercise', 'self_care', 'work_stress', 'worry', 'physical_anxiety'],
-    themesPerEntry: [2, 3],
+    themePool: ['motivation', 'sleep', 'social_connection', 'exercise', 'self_care', 'work_stress'],
+    themesPerEntry: [1, 3],
   },
   volatile_stabilizer: {
     archetype: 'volatile_stabilizer',
@@ -67,7 +67,7 @@ export const ARCHETYPE_CONFIGS: Record<Archetype, ArchetypeConfig> = {
       return 5 + oscillation
     },
     dropoutDay: null,
-    themePool: ['irritability', 'panic', 'sleep', 'rumination', 'appetite', 'social_withdrawal', 'work_stress', 'worry', 'hypervigilance'],
+    themePool: ['irritability', 'panic', 'sleep', 'rumination', 'appetite', 'social_withdrawal', 'work_stress'],
     themesPerEntry: [2, 3],
   },
   hidden_deteriorator: {
@@ -75,7 +75,7 @@ export const ARCHETYPE_CONFIGS: Record<Archetype, ArchetypeConfig> = {
     moodCurve: (day, total) => 6.5 - (3.5 * day) / total,
     anxietyCurve: (day, total) => 3 + (4 * day) / total,
     dropoutDay: null,
-    themePool: ['rumination', 'social_withdrawal', 'appetite', 'sleep', 'substance_use', 'work_stress', 'motivation', 'worry', 'physical_anxiety', 'avoidance'],
+    themePool: ['rumination', 'social_withdrawal', 'appetite', 'sleep', 'substance_use', 'work_stress', 'motivation'],
     themesPerEntry: [1, 3],
   },
   flat_non_responder: {
@@ -83,7 +83,7 @@ export const ARCHETYPE_CONFIGS: Record<Archetype, ArchetypeConfig> = {
     moodCurve: () => 4,
     anxietyCurve: () => 6,
     dropoutDay: null,
-    themePool: ['sleep', 'appetite', 'motivation', 'work_stress', 'worry'],
+    themePool: ['sleep', 'appetite', 'motivation', 'work_stress'],
     themesPerEntry: [1, 2],
   },
   early_dropout: {
@@ -91,7 +91,7 @@ export const ARCHETYPE_CONFIGS: Record<Archetype, ArchetypeConfig> = {
     moodCurve: (day) => 4 + 1.5 * Math.sin(day * 0.8),
     anxietyCurve: (day) => 6 - Math.cos(day * 0.6),
     dropoutDay: (total) => Math.min(Math.floor(total * 0.3), 18),
-    themePool: ['sleep', 'work_stress', 'social_withdrawal', 'motivation', 'irritability', 'worry', 'avoidance'],
+    themePool: ['sleep', 'work_stress', 'social_withdrawal', 'motivation', 'irritability'],
     themesPerEntry: [1, 2],
   },
   relapse_then_recover: {
@@ -123,7 +123,7 @@ export const ARCHETYPE_CONFIGS: Record<Archetype, ArchetypeConfig> = {
       }
     },
     dropoutDay: null,
-    themePool: ['substance_use', 'sleep', 'rumination', 'panic', 'social_withdrawal', 'motivation', 'self_care', 'social_connection', 'physical_anxiety', 'hypervigilance'],
+    themePool: ['substance_use', 'sleep', 'rumination', 'panic', 'social_withdrawal', 'motivation', 'self_care', 'social_connection'],
     themesPerEntry: [2, 3],
   },
 }
@@ -150,52 +150,26 @@ export function generateDayScores(
   return { mood, anxiety }
 }
 
-const ANXIETY_THEMES = ['worry', 'physical_anxiety', 'avoidance', 'hypervigilance', 'panic', 'rumination']
-
-/** Pick themes for a day based on the archetype, mood, and anxiety level. */
+/** Pick themes for a day based on the archetype and mood level. */
 export function pickThemes(
   config: ArchetypeConfig,
   mood: number,
-  anxiety: number,
   rng: () => number
 ): string[] {
   const [min, max] = config.themesPerEntry
   const count = min + Math.floor(rng() * (max - min + 1))
   const pool = [...config.themePool]
 
-  // Weight negative mood themes more when mood is low
+  // Weight negative themes more when mood is low
   if (mood <= 4 && pool.includes('rumination')) {
-    pool.push('social_withdrawal')
+    pool.push('rumination', 'social_withdrawal')
   }
   if (mood >= 7 && pool.includes('motivation')) {
     pool.push('motivation', 'self_care')
   }
 
-  // Weight anxiety themes more when anxiety is high
-  if (anxiety >= 6) {
-    for (const t of ANXIETY_THEMES) {
-      if (pool.includes(t)) pool.push(t, t)
-    }
-  }
-  // Weight calming themes when anxiety is low
-  if (anxiety <= 3) {
-    for (const t of ['exercise', 'self_care', 'social_connection']) {
-      if (pool.includes(t)) pool.push(t)
-    }
-  }
-
   const selected: string[] = []
-
-  // Guarantee at least one anxiety theme when anxiety is notable
-  const availableAnxiety = pool.filter(t => ANXIETY_THEMES.includes(t))
-  if (anxiety >= 5 && availableAnxiety.length > 0) {
-    const forced = availableAnxiety[Math.floor(rng() * availableAnxiety.length)]
-    selected.push(forced)
-    const idx = pool.indexOf(forced)
-    if (idx !== -1) pool.splice(idx, 1)
-  }
-
-  for (let i = selected.length; i < count && pool.length > 0; i++) {
+  for (let i = 0; i < count && pool.length > 0; i++) {
     const idx = Math.floor(rng() * pool.length)
     const theme = pool[idx]
     if (!selected.includes(theme)) {
