@@ -21,54 +21,49 @@ A web-based therapy journaling platform where patients write daily entries, AI e
 
 ## Website walkthrough
 
-Step-by-step look at the product. Images are **styled previews** of the UI (same colors and layout as the app) so the README stays useful without running the stack. To try it yourself, see [Getting Started](#getting-started) and [Demo Mode](#demo-mode).
+Step-by-step look at the product UI. Screenshots are captured from the running app after seeding demo data. To try it yourself, see [Getting Started](#getting-started) and [Demo Mode](#demo-mode).
 
 ### 1. Sign in
 
-Patients and therapists use the same sign-in page; after authentication you are routed by role (patient → dashboard, therapist → therapist dashboard).
+Patients and therapists use the same sign-in page (`/login`); after authentication you are routed by role (patient to `/dashboard`, therapist to `/therapist/dashboard`).
 
 ![Sign-in page with email and password](docs/images/walkthrough/01-login.png)
 
 ### 2. Patient dashboard
 
-Home view with a weekly narrative, mood chart, simple themes, and shortcuts to write a new entry or open detailed insights.
+Home view (`/dashboard`) with a greeting, weekly narrative headline, mood chart ("How your days felt overall"), theme and reflection cards, and shortcuts to **Write something** or **View details** (insights).
 
 ![Patient dashboard with mood chart and actions](docs/images/walkthrough/02-patient-dashboard.png)
 
 ### 3. New journal entry
 
-Guided check-in with mood options and a free-writing area; entries can feed AI-assisted summaries on the insights screens (with confidence and safety boundaries described elsewhere in this repo).
+Guided journaling (`/journal/new`) starts with mood selection, then AI-assisted prompts, writing, optional structured fields (sleep, energy), and a review step with a **Share with your therapist** toggle before saving.
 
-![New journal entry with mood chips and note area](docs/images/walkthrough/03-journal-new-entry.png)
+![Guided journal entry with mood selection](docs/images/walkthrough/03-journal-new-entry.png)
 
 ### 4. Patient insights
 
-Deeper charts and patterns (mood over time, symptoms, sleep correlation) for the patient’s own review.
+Deeper patterns (`/dashboard/insights`) including mood over time, time-of-day patterns, frequent topics/symptoms, and sleep-mood correlation when data exists.
 
-![Patient insights with charts and AI output label](docs/images/walkthrough/04-patient-insights.png)
+![Patient insights with charts](docs/images/walkthrough/04-patient-insights.png)
 
 ### 5. Therapist dashboard
 
-Overview of assigned patients and space for crisis-oriented alerts when the system flags concerning language.
+Overview (`/therapist/dashboard`) with crisis alerts when present, stat tiles (patients, shared entries, alerts, average mood), your patient list, and recent shared entries.
 
-![Therapist dashboard with patient list and alert area](docs/images/walkthrough/05-therapist-dashboard.png)
+![Therapist dashboard with alerts and activity](docs/images/walkthrough/05-therapist-dashboard.png)
 
 ### 6. Therapist patient list
 
-Browse everyone you are connected with and open a patient for detail.
+Full list (`/therapist/patients`) of assigned patients with shared-entry counts, last activity, average mood, and crisis indicators when applicable.
 
 ![Therapist all-patients list](docs/images/walkthrough/06-therapist-patient-list.png)
 
 ### 7. Therapist patient detail
 
-Shared entries and trends for one patient, with clinical context banners (not a replacement for professional judgment).
+Single-patient view (`/therapist/patients/[id]`) with longitudinal summary, mood/anxiety and symptom charts, sleep-mood correlation, emotional pattern tags, and shared journal entries with AI context (not a substitute for clinical judgment).
 
-![Therapist patient detail with trend and shared entry](docs/images/walkthrough/07-therapist-patient-detail.png)
-
-**Regenerating images**
-
-- Default preview PNGs (no server required): `npm run screenshots:readme`
-- Capture from a running local app after seeding demo data (`npm run seed:cohort`): `npm run screenshots:readme:live`
+![Therapist patient detail with trends and entries](docs/images/walkthrough/07-therapist-patient-detail.png)
 
 ## Tech Stack
 
@@ -173,140 +168,6 @@ This creates two accounts and 20 days of realistic journal data:
 
 Run `npm run seed:demo` again. It clears only the demo patient's data and reseeds fresh entries with timestamps relative to "now".
 
-## Training with Public Datasets
-
-You can train the mood-scoring and feature-extraction pipeline using public mental health text datasets instead of real user data. The ingestion script loads external CSV/TSV files, maps labels to simulated mood self-reports, generates synthetic structured data (sleep, energy, medication) correlated with mood, and runs every entry through the same GPT-4 extraction pipeline used in production.
-
-### Supported Datasets
-
-| Dataset | Source | Format | What it provides |
-|---------|--------|--------|-----------------|
-| **Sentiment Analysis for Mental Health** | [Kaggle](https://www.kaggle.com/datasets/suchintikasarkar/sentiment-analysis-for-mental-health) | CSV | ~16k rows of mental-health text with diagnostic labels (Depression, Anxiety, Normal, etc.) |
-| **GoEmotions** | [GitHub](https://github.com/google-research/google-research/tree/master/goemotions) | TSV | 58k Reddit comments with 27 fine-grained emotion labels |
-
-### Download & Prepare Data
-
-1. Create the `data/` directory (it is gitignored):
-   ```bash
-   mkdir data
-   ```
-
-2. **Kaggle dataset** — Download from the link above, unzip, and place the CSV in `data/`:
-   ```
-   data/mental_health.csv
-   ```
-
-3. **GoEmotions** — Download the TSV files and concatenate:
-   ```bash
-   cd data
-   curl -O https://raw.githubusercontent.com/google-research/google-research/master/goemotions/data/full_dataset/goemotions_1.csv
-   curl -O https://raw.githubusercontent.com/google-research/google-research/master/goemotions/data/full_dataset/goemotions_2.csv
-   curl -O https://raw.githubusercontent.com/google-research/google-research/master/goemotions/data/full_dataset/goemotions_3.csv
-   cat goemotions_1.csv goemotions_2.csv goemotions_3.csv > goemotions.tsv
-   cd ..
-   ```
-
-### Run Ingestion
-
-```bash
-# Preview what will happen (no API calls):
-npm run ingest:public -- --dataset kaggle --file data/mental_health.csv --dry-run
-
-# Ingest 200 entries from the Kaggle dataset:
-npm run ingest:public -- --dataset kaggle --file data/mental_health.csv --limit 200
-
-# Ingest 500 GoEmotions entries with higher parallelism:
-npm run ingest:public -- --dataset goemotions --file data/goemotions.tsv --limit 500 --concurrency 8
-
-# Skip GPT-4 extraction (only embed + ingest structure):
-npm run ingest:public -- --dataset kaggle --file data/mental_health.csv --skip-extraction
-```
-
-### CLI Flags
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--dataset` | (required) | `kaggle` or `goemotions` |
-| `--file` | (required) | Path to the downloaded CSV/TSV |
-| `--limit` | `200` | Max entries to ingest |
-| `--concurrency` | `5` | Parallel API calls |
-| `--dry-run` | `false` | Preview mappings without API calls |
-| `--skip-extraction` | `false` | Skip GPT-4 extraction, only embed + ingest |
-
-### Cost Estimate
-
-Each entry requires one GPT-4 call (~$0.02) and one embedding call (~$0.0001):
-
-| Entries | GPT-4 Cost | Embedding Cost | Total |
-|---------|-----------|---------------|-------|
-| 200 | ~$4 | ~$0.02 | ~$4 |
-| 500 | ~$10 | ~$0.05 | ~$10 |
-| 1,000 | ~$20 | ~$0.10 | ~$20 |
-
-Use `--skip-extraction` to avoid GPT-4 costs (embeddings are very cheap).
-
-### After Ingestion
-
-1. Train calibration models for each synthetic user via `POST /api/graph/train`
-2. Evaluate model quality:
-   ```bash
-   npm run neo4j:eval
-   ```
-
-## Synthetic Demo Mode
-
-A self-contained demo environment for workflow validation using 100% synthetic data. No real patient information is used or displayed.
-
-### Setup
-
-1. Add to your `.env.local`:
-   ```
-   DEMO_MODE=true
-   NEXT_PUBLIC_DEMO_MODE=true
-   ```
-
-2. Generate synthetic data (choose one):
-   ```bash
-   # Via seed script (direct, no server needed)
-   pnpm seed:synthetic
-
-   # Or with custom parameters
-   npx tsx scripts/seedSynthetic.ts --patients=3 --days=45
-
-   # Reset and regenerate
-   npx tsx scripts/seedSynthetic.ts --reset --patients=2 --days=45
-   ```
-
-3. Start the dev server:
-   ```bash
-   pnpm dev
-   ```
-
-4. Visit [http://localhost:3000/demo/admin/synthetic](http://localhost:3000/demo/admin/synthetic)
-
-### Demo Pages
-
-| Page | Description |
-|------|-------------|
-| `/demo/admin/synthetic` | Generate/reset cohorts, list synthetic patients |
-| `/demo/clinician/patients/[id]` | Z-score, volatility, slope charts + weekly summaries + evidence snippets + feedback panel |
-| `/demo/patient/[id]` | Simplified mood trend + weekly reflections (patient-friendly language) |
-| `/demo/admin/feedback` | Aggregated feedback by component and archetype |
-
-### Archetypes
-
-Six synthetic patient archetypes are available:
-- **Gradual Improver** — steady upward mood trend
-- **Volatile Stabilizer** — large oscillations that dampen over time
-- **Hidden Deteriorator** — slow decline masked by initially good scores
-- **Flat Non-Responder** — minimal score variation throughout
-- **Early Dropout** — stops generating entries after ~30% of the period
-- **Relapse then Recover** — improves, drops sharply, then recovers
-
-### Feature Flag
-
-When `DEMO_MODE` is not `true`, all `/demo/*` and `/api/demo/*` routes return 404. Demo data is stored in existing tables (`journal_entries`, `ai_extractions`) with `is_synthetic=true` and is invisible to production views (null `patient_id` excluded by RLS).
-
 ## AI Safety
 
 The AI components follow strict guidelines defined in `AI_RULES.md`:
@@ -332,4 +193,3 @@ MIT
 ## Disclaimer
 
 This application is not a substitute for professional mental health care. If you're in crisis, please contact emergency services or call 988 (Suicide & Crisis Lifeline).
-
