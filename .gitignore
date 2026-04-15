@@ -6,8 +6,6 @@
 
 # testing
 /coverage
-/playwright-report/
-/test-results/
 
 # next.js
 /.next/
@@ -40,9 +38,6 @@ next-env.d.ts
 .idea
 .vscode
 .cursor
-
-# Public dataset files (downloaded CSVs/TSVs)
-/data/
 
 # Windows reserved name artifact
 nul
