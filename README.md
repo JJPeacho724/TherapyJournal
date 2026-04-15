@@ -19,6 +19,57 @@ A web-based therapy journaling platform where patients write daily entries, AI e
 - **Crisis Alerts** - Notifications when concerning language is detected
 - **HIPAA Logging** - All access is logged for compliance
 
+## Website walkthrough
+
+Step-by-step look at the product. Images are **styled previews** of the UI (same colors and layout as the app) so the README stays useful without running the stack. To try it yourself, see [Getting Started](#getting-started) and [Demo Mode](#demo-mode).
+
+### 1. Sign in
+
+Patients and therapists use the same sign-in page; after authentication you are routed by role (patient → dashboard, therapist → therapist dashboard).
+
+![Sign-in page with email and password](docs/images/walkthrough/01-login.png)
+
+### 2. Patient dashboard
+
+Home view with a weekly narrative, mood chart, simple themes, and shortcuts to write a new entry or open detailed insights.
+
+![Patient dashboard with mood chart and actions](docs/images/walkthrough/02-patient-dashboard.png)
+
+### 3. New journal entry
+
+Guided check-in with mood options and a free-writing area; entries can feed AI-assisted summaries on the insights screens (with confidence and safety boundaries described elsewhere in this repo).
+
+![New journal entry with mood chips and note area](docs/images/walkthrough/03-journal-new-entry.png)
+
+### 4. Patient insights
+
+Deeper charts and patterns (mood over time, symptoms, sleep correlation) for the patient’s own review.
+
+![Patient insights with charts and AI output label](docs/images/walkthrough/04-patient-insights.png)
+
+### 5. Therapist dashboard
+
+Overview of assigned patients and space for crisis-oriented alerts when the system flags concerning language.
+
+![Therapist dashboard with patient list and alert area](docs/images/walkthrough/05-therapist-dashboard.png)
+
+### 6. Therapist patient list
+
+Browse everyone you are connected with and open a patient for detail.
+
+![Therapist all-patients list](docs/images/walkthrough/06-therapist-patient-list.png)
+
+### 7. Therapist patient detail
+
+Shared entries and trends for one patient, with clinical context banners (not a replacement for professional judgment).
+
+![Therapist patient detail with trend and shared entry](docs/images/walkthrough/07-therapist-patient-detail.png)
+
+**Regenerating images**
+
+- Default preview PNGs (no server required): `npm run screenshots:readme`
+- Capture from a running local app after seeding demo data (`npm run seed:cohort`): `npm run screenshots:readme:live`
+
 ## Tech Stack
 
 - **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS

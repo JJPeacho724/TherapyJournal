@@ -22,6 +22,8 @@
     "test:perf": "npx tsx scripts/perf-test.ts",
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
+    "screenshots:readme": "npx tsx scripts/generate-readme-screenshots.ts",
+    "screenshots:readme:live": "npx playwright test e2e/readme-walkthrough-live.spec.ts",
     "eval:report": "npx tsx scripts/eval-report.ts"
   },
   "dependencies": {
